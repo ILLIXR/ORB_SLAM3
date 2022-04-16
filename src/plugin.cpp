@@ -136,9 +136,33 @@ public:
             rot
         ));
 
-        // _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
-        //     timestamp_in_seconds
-        // ));
+        // Dummy values
+        Eigen::Vector3d bias_a(1,0,0);
+        Eigen::Vector3d biasGyro(1,0,0);
+        Eigen::Matrix<double,3,1> position(1,0,0);
+        Eigen::Matrix<double,3,1> velocity(1,0,0);
+        Eigen::Quaterniond quat(1,0,0,0);
+
+        _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
+            timestamp_in_seconds,
+            0,
+            imu_params{
+                .gyro_noise = 0.00016968,
+                .acc_noise = 0.002,
+                .gyro_walk = 1.9393e-05,
+                .acc_walk = 0.003,
+                .n_gravity = Eigen::Matrix<double,3,1>(0.0, 0.0, -9.81),
+                .imu_integration_sigma = 1.0,
+                .nominal_rate = 200.0,
+            },
+            bias_a,
+            biasGyro,
+            position,
+            velocity,
+            quat
+        ));
+
+        imu_cam_buffer = datum;
     }
 
     virtual ~orb_slam3() override {}

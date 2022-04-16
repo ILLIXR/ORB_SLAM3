@@ -35,9 +35,6 @@ find_package(OpenCV 3)
       message(FATAL_ERROR "OpenCV > 3 not found.")
    endif()
 
-MESSAGE("OPENCV VERSION:")
-MESSAGE(${OpenCV_VERSION})
-
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(realsense2)
@@ -52,6 +49,8 @@ ${Pangolin_INCLUDE_DIRS}
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
+
+
 
 add_library(${PROJECT_NAME} SHARED
 src/System.cc
@@ -134,6 +133,8 @@ if(realsense2_FOUND)
     ${realsense2_LIBRARY}
     )
 endif()
+
+
 
 
 # Build examples

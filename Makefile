@@ -11,17 +11,13 @@ plugin.dbg.so: build/Debug/Makefile
 
 .PHONY: plugin.opt.so
 plugin.opt.so: build/Release/Makefile
+	chmod +x build.sh && \
+	./build.sh && \
 	make -C build/Release  && \
 	rm -f $@ && \
 	ln -s build/Release/libplugin.so plugin.opt.so && \
 	true
 
-unzip_vocab:
-	cd Vocabulary && \
-	tar -xvf ORBvoc.txt.tar.gz ORBvoc.txt && \
-	cd .. && \
-	true
-	
 build/Debug/Makefile:
 	mkdir -p build/Debug && \
 	cd build/Debug && \

@@ -11,9 +11,10 @@ plugin.dbg.so: build/Debug/Makefile
 
 .PHONY: plugin.opt.so
 plugin.opt.so: build/Release/Makefile
+	./build.sh && \
 	make -C build/Release  && \
 	rm -f $@ && \
-	ln -s build/Release/libplugin.so plugin.opt.so && \
+	ln -s lib/libplugin.so plugin.opt.so && \
 	true
 
 build/Debug/Makefile:

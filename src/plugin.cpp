@@ -136,9 +136,9 @@ public:
             rot
         ));
 
-        _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
-            timestamp_in_seconds
-        ));
+        // _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
+        //     timestamp_in_seconds
+        // ));
     }
 
     virtual ~orb_slam3() override {}

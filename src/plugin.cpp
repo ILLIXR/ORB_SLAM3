@@ -44,7 +44,7 @@ public:
     #ifdef ZED
         std::string setting_path; // path to config/zed.yaml
     #else
-        std::string setting_path = "home/henrydc/ORB_SLAM3/src/config/euroc.yaml"; // path to config/euroc.yaml
+        std::string setting_path = "/home/henrydc/ORB_SLAM3/src/config/euroc.yaml"; // path to config/euroc.yaml
     #endif 
 
         // set up ORB_SLAM

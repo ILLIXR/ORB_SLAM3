@@ -18,6 +18,8 @@
 
 using namespace ILLIXR;
 
+//#define ZED
+
 class orb_slam3 : public plugin {
 public:
     orb_slam3(std::string name_, phonebook* pb_)
@@ -34,10 +36,19 @@ public:
 			Eigen::Quaternionf{1, 0, 0, 0}
 		));
 
+        // LATER: path to Vocabulary/ORBvoc.txt.tar.gz (make unzip code or push decompressed file)
+        // or create our own dataset
+        std::string vocab_path; 
+
+        // LATER: add setting path (yaml files in config/)
+    #ifdef ZED
+        std::string setting_path; // path to config/zed.yaml
+    #else
+        std::string setting_path; // path to config/euroc.yaml
+    #endif 
+
         // set up ORB_SLAM
-        std::string volcab_path; // TODO: add volcabulary path (txt)
-        std::string setting_path; // TODO: add setting path (yaml)
-        SLAM = std::make_unique<ORB_SLAM3::System>(volcab_path, setting_path, ORB_SLAM3::System::IMU_STEREO, false);
+        SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path, setting_path, ORB_SLAM3::System::IMU_STEREO, false);
         
     #ifdef CV_HAS_METRICS
         cv::metrics::setAccount(new std::string{"-1"});
@@ -60,12 +71,12 @@ public:
 
         // This ensures that every data point is coming in chronological order If youre failing this assert, 
 		// make sure that your data folder matches the name in offline_imu_cam/plugin.cc
-        // TODO:how old imu data is (buffered back by one) (NEED TO VERIFY THIS)!
+        // VERIFY: how old imu data is (buffered back by one) (NEED TO VERIFY THIS
 		double timestamp_in_seconds = (double(datum->dataset_time) / NANO_SEC);
 		assert(timestamp_in_seconds > previous_timestamp);
 		previous_timestamp = timestamp_in_seconds;
         
-        // TODO: how old cam data is (NEED TO VERIFY THIS)!
+        // VERIFY: how old cam data is (NEED TO VERIFY THIS)!
         double buffer_timestamp_seconds = double(imu_cam_buffer->dataset_time) / NANO_SEC;
 
         // Feed the IMU measurement. There should always be IMU data in each call to feed_imu_cam
@@ -105,10 +116,32 @@ public:
 		cv::Mat img1{imu_cam_buffer->img1.value()};
 
         // Pass the images and imu data to the SLAM system
-        Eigen::Vector3f slam_output = SLAM->TrackStereo(img0,img1,timestamp_in_seconds,input_imu_data);
+        Sophus::SE3f slam_output = SLAM->TrackStereo(img0,img1,timestamp_in_seconds,input_imu_data);
+        Eigen::Vector3f pos = slam_output.translation();
+        Eigen::Quaternionf rot = slam_output.unit_quaternion();
+        Eigen::Quaterniond rot2 = Eigen::Quaterniond{double(rot.w()),double(rot.x()),double(rot.y()),double(rot.z())};
+        
+        assert(isfinite(pos[0]));
+        assert(isfinite(pos[1]));
+        assert(isfinite(pos[2]));
+        assert(isfinite(rot.w()));
+        assert(isfinite(rot.w()));
+        assert(isfinite(rot.w()));
+        assert(isfinite(rot.w()));
+        
+        // TODO: put that to _m_pose and _m_imu_integrator_input
+        _m_pose.put(_m_pose.allocate(
+            imu_cam_buffer->time,
+            pos,
+            rot
+        ));
 
-        // TODO: convert the output to ILLIXR-readable output 
+        _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
+            timestamp_in_seconds
+        ));
     }
+
+    virtual ~orb_slam3() override {}
 private:
     const std::shared_ptr<switchboard> sb;
     switchboard::writer<pose_type> _m_pose;

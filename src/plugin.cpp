@@ -11,10 +11,10 @@
 #include "ImuTypes.h"
 #include "Optimizer.h"
 
-#include "common/plugin.hpp"
-#include "common/phonebook.hpp"
-#include "common/switchboard.hpp"
-#include "common/data_format.hpp"
+#include "../common/plugin.hpp"
+#include "../common/phonebook.hpp"
+#include "../common/switchboard.hpp"
+#include "../common/data_format.hpp"
 
 using namespace ILLIXR;
 

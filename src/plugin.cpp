@@ -38,13 +38,13 @@ public:
 
         // LATER: path to Vocabulary/ORBvoc.txt.tar.gz (make unzip code or push decompressed file)
         // or create our own dataset
-        std::string vocab_path; 
+        std::string vocab_path = "/home/henrydc/ORB_SLAM3/Vocabulary/ORBvoc.txt"; 
 
         // LATER: add setting path (yaml files in config/)
     #ifdef ZED
         std::string setting_path; // path to config/zed.yaml
     #else
-        std::string setting_path; // path to config/euroc.yaml
+        std::string setting_path = "home/henrydc/ORB_SLAM3/src/config/euroc.yaml"; // path to config/euroc.yaml
     #endif 
 
         // set up ORB_SLAM

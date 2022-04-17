@@ -4,6 +4,8 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include <filesystem>
+
 #include <math.h>
 #include <eigen3/Eigen/Dense>
 
@@ -49,7 +51,8 @@ public:
 
         // set up ORB_SLAM
         SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path, setting_path, ORB_SLAM3::System::IMU_STEREO, false);
-        
+        //std::filesystem::path a = std::filesystem::current_path();
+        std::cout << "CURRENT PATH: " << std::filesystem::current_path();
     #ifdef CV_HAS_METRICS
         cv::metrics::setAccount(new std::string{"-1"});
     #endif

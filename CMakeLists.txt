@@ -120,6 +120,7 @@ ${EIGEN3_LIBS}
 ${Pangolin_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+-lboost_filesystem
 -lboost_serialization
 -lcrypto
 )
@@ -240,7 +241,7 @@ target_link_libraries(plugin ${PROJECT_NAME})
 #     target_link_libraries(mono_inertial_realsense_D435i ${PROJECT_NAME})
 # endif()
 
-# #Stereo Inertial examples
+# # #Stereo Inertial examples
 # set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo-Inertial)
 
 # add_executable(stereo_inertial_euroc

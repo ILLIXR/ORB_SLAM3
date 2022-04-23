@@ -324,8 +324,6 @@ Sophus::SE3f System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, 
 
     return Tcw;
 }
-
-// FOR ILLIXR INTEGRATION
 Tracking* System::returnTracker(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp, const vector<IMU::Point>& vImuMeas, string filename)
 {
     if(mSensor!=STEREO && mSensor!=IMU_STEREO)
@@ -409,7 +407,6 @@ Tracking* System::returnTracker(const cv::Mat &imLeft, const cv::Mat &imRight, c
 
     return mpTracker;
 }
-
 Sophus::SE3f System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp, const vector<IMU::Point>& vImuMeas, string filename)
 {
     if(mSensor!=RGBD  && mSensor!=IMU_RGBD)

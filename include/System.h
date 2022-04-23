@@ -188,6 +188,8 @@ public:
 
     float GetImageScale();
 
+    Settings* settings_;
+
 #ifdef REGISTER_TIMES
     void InsertRectTime(double& time);
     void InsertResizeTime(double& time);
@@ -262,8 +264,6 @@ private:
     string mStrSaveAtlasToFile;
 
     string mStrVocabularyFilePath;
-
-    Settings* settings_;
 };
 
 }// namespace ORB_SLAM

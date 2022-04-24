@@ -113,10 +113,13 @@ public:
         cv::Mat img0{datum->img0.value()};
 		cv::Mat img1{datum->img1.value()};
 
+        cv::Mat im_left = img0.clone();
+        cv::Mat im_right = img1.clone();
+        
         //std::cout<<"LOADED CAM INTO SYSTEM__________"<<std::endl;
         
         // Pass the images and imu data to the SLAM system
-        slam_tracker = SLAM->returnTracker(img0,img1,timestamp_in_seconds,prev_input);  
+        slam_tracker = SLAM->returnTracker(im_left,im_right,timestamp_in_seconds,prev_input);  
         output_frame = slam_tracker->mCurrentFrame;
 
         Eigen::Vector3f posf = output_frame.GetImuPosition();

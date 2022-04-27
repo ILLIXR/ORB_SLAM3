@@ -181,7 +181,9 @@ public:
         prev_input.clear();
     }
 
-    virtual ~orb_slam3() override {}
+    virtual ~orb_slam3() override {
+        SLAM->Shutdown();
+    }
     
 private:
     const std::shared_ptr<switchboard> sb;

@@ -119,7 +119,12 @@ public:
         //std::cout<<"LOADED CAM INTO SYSTEM__________"<<std::endl;
         
         // Pass the images and imu data to the SLAM system
-        slam_tracker = SLAM->returnTracker(im_left,im_right,timestamp_in_seconds,prev_input);  
+        slam_tracker = SLAM->returnTracker(im_left,im_right,timestamp_in_seconds,prev_input);
+        if (slam_tracker->mState == ORB_SLAM3::Tracking::eTrackingState::NOT_INITIALIZED) {
+            std::cout << "System not ready " << std::endl;
+            return;
+        }
+
         output_frame = slam_tracker->mCurrentFrame;
 
         Eigen::Vector3f posf = output_frame.GetImuPosition();
@@ -152,6 +157,7 @@ public:
             rot
         ));
         
+        std::cout << "Pushing int input" << std::endl;
         _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
             timestamp_in_seconds,
             0,

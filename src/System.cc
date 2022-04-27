@@ -396,7 +396,7 @@ Tracking* System::returnTracker(const cv::Mat &imLeft, const cv::Mat &imRight, c
             mpTracker->GrabImuData(vImuMeas[i_imu]);
 
     // std::cout << "start GrabImageStereo" << std::endl;
-    Sophus::SE3f Tcw = mpTracker->GrabImageStereo(imLeftToFeed,imRightToFeed,timestamp,filename);
+    mpTracker->GrabImageStereo(imLeftToFeed,imRightToFeed,timestamp,filename);
 
     // std::cout << "out grabber" << std::endl;
 

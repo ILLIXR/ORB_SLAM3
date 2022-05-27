@@ -890,9 +890,6 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
                     vpEdgesMono.push_back(e);
                     vnIndexEdgeMono.push_back(i);
-
-                    if((nInitialCorrespondences-nBad)<5)
-                        break;
                 }
                 else  // Stereo observation
                 {
@@ -927,9 +924,6 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
                     vpEdgesStereo.push_back(e);
                     vnIndexEdgeStereo.push_back(i);
-
-                    if((nInitialCorrespondences-nBad)<5)
-                        break;
                 }
             }
             //SLAM with respect a rigid body
@@ -964,9 +958,6 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
                     vpEdgesMono.push_back(e);
                     vnIndexEdgeMono.push_back(i);
-
-                    if((nInitialCorrespondences-nBad)<5)
-                        break;
                 }
                 else {
                     kpUn = pFrame->mvKeysRight[i - pFrame->Nleft];
@@ -996,9 +987,6 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
                     vpEdgesMono_FHR.push_back(e);
                     vnIndexEdgeRight.push_back(i);
-
-                    if((nInitialCorrespondences-nBad)<5)
-                        break;
                 }
             }
         }
@@ -1026,6 +1014,9 @@ int Optimizer::PoseOptimization(Frame *pFrame)
         nBad=0;
         for(size_t i=0, iend=vpEdgesMono.size(); i<iend; i++)
         {
+            if((nInitialCorrespondences-nBad)<5)
+                break;
+
             ORB_SLAM3::EdgeSE3ProjectXYZOnlyPose* e = vpEdgesMono[i];
 
             const size_t idx = vnIndexEdgeMono[i];
@@ -1055,6 +1046,9 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
         for(size_t i=0, iend=vpEdgesMono_FHR.size(); i<iend; i++)
         {
+            if((nInitialCorrespondences-nBad)<5)
+                break;
+                
             ORB_SLAM3::EdgeSE3ProjectXYZOnlyPoseToBody* e = vpEdgesMono_FHR[i];
 
             const size_t idx = vnIndexEdgeRight[i];
@@ -1084,6 +1078,9 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
         for(size_t i=0, iend=vpEdgesStereo.size(); i<iend; i++)
         {
+            if((nInitialCorrespondences-nBad)<5)
+                break;
+                
             g2o::EdgeStereoSE3ProjectXYZOnlyPose* e = vpEdgesStereo[i];
 
             const size_t idx = vnIndexEdgeStereo[i];

@@ -45,7 +45,7 @@ public:
 
         // set up ORB_SLAM
         SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, false);
-        
+
     #ifdef CV_HAS_METRICS
         cv::metrics::setAccount(new std::string{"-1"});
     #endif
@@ -81,10 +81,12 @@ public:
         
         // If there is cam data, load IMU data from the last cam data up until now
         if (datum->img0.has_value() || datum->img1.has_value()) {
+            prev_input.clear();
+            std::cout << std::setprecision(17) << timestamp_in_seconds << std::endl;
             for (int i = 0; i < current_input.size(); i++){
                 ORB_SLAM3::IMU::Point input_im = current_input[i];
                 prev_input.push_back(input_im);
-
+                
                 // std::cout<<"IMU: "<<input_im.a.x()<<" "<<input_im.a.y()<<" "<<input_im.a.z()<<" "<<input_im.w.x()<<" "<<input_im.w.y()
                 // <<" "<<input_im.w.z()<<" "<<input_im.t<<std::endl;
             }
@@ -115,33 +117,48 @@ public:
 
         cv::Mat im_left = img0.clone();
         cv::Mat im_right = img1.clone();
-        
         //std::cout<<"LOADED CAM INTO SYSTEM__________"<<std::endl;
         
         // Pass the images and imu data to the SLAM system
         slam_tracker = SLAM->returnTracker(im_left,im_right,timestamp_in_seconds,prev_input);
-        if (slam_tracker->mState == ORB_SLAM3::Tracking::eTrackingState::NOT_INITIALIZED) {
-            std::cout << "System not ready " << std::endl;
-            return;
-        }
 
         output_frame = slam_tracker->mCurrentFrame;
 
+
+        
         Eigen::Vector3f posf = output_frame.GetImuPosition();
         Eigen::Vector3f pos = Eigen::Vector3f{posf.x(), posf.y(), posf.z()};
         Eigen::Vector3d posd = Eigen::Vector3d{double(posf.x()), double(posf.y()), double(posf.z())};
 
-        Eigen::Matrix3f rotmatrix = output_frame.GetImuRotation();
-        Eigen::Quaternionf rotf(rotmatrix);
+        //Eigen::Matrix3f rotmatrix = output_frame.GetPose().inverse().unit_quaternion();
+        Eigen::Quaternionf rotf(output_frame.GetImuRotation());
+        // Eigen::Quaternionf rot_offset (0.7071, 0, 0, 0.7071);
+        // rotf = rotf * rot_offset;
         Eigen::Quaternionf rot = Eigen::Quaternionf{rotf.w(),rotf.x(),rotf.y(),rotf.z()};
         Eigen::Quaterniond rotd = Eigen::Quaterniond{double(rotf.w()),double(rotf.x()),double(rotf.y()),double(rotf.z())};
+
         
+        std::cout << "ROT: " << rot.w()<<" "<<rot.x()<<" "<<rot.y()<<" "<<rot.z()<<"\n";
+        std::cout << "POS: "<< pos[0]<<" "<<pos[1]<<" "<<pos[2]<<"\n";
+        
+
         Eigen::Vector3f velf = output_frame.GetVelocity();
         Eigen::Vector3d vel = Eigen::Vector3d{double(velf.x()), double(velf.y()), double(velf.z())};
 
-        ORB_SLAM3::IMU::Bias imu_bias = output_frame.mImuBias;
+        ORB_SLAM3::IMU::Bias imu_bias = output_frame.mPredBias;
         Eigen::Vector3d gyro_bias(double(imu_bias.bwx), double(imu_bias.bwy), double(imu_bias.bwz));
         Eigen::Vector3d acc_bias(double(imu_bias.bax), double(imu_bias.bay), double(imu_bias.baz));
+        Eigen::Vector3d zeroVector(0,0,0);
+        std::cout << "BIAS_ACC: " << imu_bias.bax << " " << imu_bias.bay <<" " << imu_bias.baz<<std::endl;
+        std::cout << "BIAS_GYRO: " << imu_bias.bwx << " " << imu_bias.bwy <<" " << imu_bias.bwz<<std::endl;
+        std::cout << "_________________________________" <<std::endl;
+
+        if (gyro_bias == zeroVector && acc_bias == zeroVector) {
+            return;
+        }
+        // if (slam_tracker->mState == ORB_SLAM3::Tracking::eTrackingState::NOT_INITIALIZED) {
+        //     return;
+        // }
 
         assert(isfinite(posf[0]));
         assert(isfinite(posf[1]));
@@ -151,13 +168,13 @@ public:
         assert(isfinite(rotf.y()));
         assert(isfinite(rotf.z()));
         
+        if (slam_tracker->mState != ORB_SLAM3::Tracking::eTrackingState::NOT_INITIALIZED) {
         _m_pose.put(_m_pose.allocate(
             datum->time,
             pos,
             rot
         ));
         
-        std::cout << "Pushing int input" << std::endl;
         _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
             timestamp_in_seconds,
             0,
@@ -179,6 +196,7 @@ public:
 
         // clear imu vector if there are images
         prev_input.clear();
+        }
     }
 
     virtual ~orb_slam3() override {
@@ -198,6 +216,8 @@ private:
     vector<ORB_SLAM3::IMU::Point> current_input;
     vector<ORB_SLAM3::IMU::Point> prev_input;
     boost::filesystem::path root_path;
+
+    cv::Mat M1l, M2l, M1r, M2r;
 
     switchboard::ptr<const imu_cam_type> imu_cam_buffer;
     double previous_timestamp = 0.0;

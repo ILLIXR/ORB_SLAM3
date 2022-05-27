@@ -890,6 +890,9 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
                     vpEdgesMono.push_back(e);
                     vnIndexEdgeMono.push_back(i);
+
+                    if((nInitialCorrespondences-nBad)<5)
+                        break;
                 }
                 else  // Stereo observation
                 {
@@ -924,6 +927,9 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
                     vpEdgesStereo.push_back(e);
                     vnIndexEdgeStereo.push_back(i);
+
+                    if((nInitialCorrespondences-nBad)<5)
+                        break;
                 }
             }
             //SLAM with respect a rigid body
@@ -958,6 +964,9 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
                     vpEdgesMono.push_back(e);
                     vnIndexEdgeMono.push_back(i);
+
+                    if((nInitialCorrespondences-nBad)<5)
+                        break;
                 }
                 else {
                     kpUn = pFrame->mvKeysRight[i - pFrame->Nleft];
@@ -987,6 +996,9 @@ int Optimizer::PoseOptimization(Frame *pFrame)
 
                     vpEdgesMono_FHR.push_back(e);
                     vnIndexEdgeRight.push_back(i);
+
+                    if((nInitialCorrespondences-nBad)<5)
+                        break;
                 }
             }
         }

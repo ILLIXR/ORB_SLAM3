@@ -197,49 +197,49 @@ void LocalMapping::Run()
                 vdKFCulling_ms.push_back(timeKFCulling_ms);
 #endif
 
-                if ((mTinit<50.0f) && mbInertial)
-                {
-                    if(mpCurrentKeyFrame->GetMap()->isImuInitialized() && mpTracker->mState==Tracking::OK) // Enter here everytime local-mapping is called
-                    {
-                        if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA1()){
-                            if (mTinit>5.0f)
-                            {
-                                cout << "start VIBA 1" << endl;
-                                mpCurrentKeyFrame->GetMap()->SetIniertialBA1();
-                                if (mbMonocular)
-                                    InitializeIMU(1.f, 1e5, true);
-                                else
-                                    InitializeIMU(1.f, 1e5, true);
+                // if ((mTinit<50.0f) && mbInertial)
+                // {
+                //     if(mpCurrentKeyFrame->GetMap()->isImuInitialized() && mpTracker->mState==Tracking::OK) // Enter here everytime local-mapping is called
+                //     {
+                //         if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA1()){
+                //             if (mTinit>5.0f)
+                //             {
+                //                 cout << "start VIBA 1" << endl;
+                //                 mpCurrentKeyFrame->GetMap()->SetIniertialBA1();
+                //                 if (mbMonocular)
+                //                     InitializeIMU(1.f, 1e5, true);
+                //                 else
+                //                     InitializeIMU(1.f, 1e5, true);
 
-                                cout << "end VIBA 1" << endl;
-                            }
-                        }
-                        else if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA2()){
-                            if (mTinit>15.0f){
-                                cout << "start VIBA 2" << endl;
-                                mpCurrentKeyFrame->GetMap()->SetIniertialBA2();
-                                if (mbMonocular)
-                                    InitializeIMU(0.f, 0.f, true);
-                                else
-                                    InitializeIMU(0.f, 0.f, true);
+                //                 cout << "end VIBA 1" << endl;
+                //             }
+                //         }
+                //         else if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA2()){
+                //             if (mTinit>15.0f){
+                //                 cout << "start VIBA 2" << endl;
+                //                 mpCurrentKeyFrame->GetMap()->SetIniertialBA2();
+                //                 if (mbMonocular)
+                //                     InitializeIMU(0.f, 0.f, true);
+                //                 else
+                //                     InitializeIMU(0.f, 0.f, true);
 
-                                cout << "end VIBA 2" << endl;
-                            }
-                        }
+                //                 cout << "end VIBA 2" << endl;
+                //             }
+                //         }
 
-                        // scale refinement
-                        if (((mpAtlas->KeyFramesInMap())<=200) &&
-                                ((mTinit>25.0f && mTinit<25.5f)||
-                                (mTinit>35.0f && mTinit<35.5f)||
-                                (mTinit>45.0f && mTinit<45.5f)||
-                                (mTinit>55.0f && mTinit<55.5f)||
-                                (mTinit>65.0f && mTinit<65.5f)||
-                                (mTinit>75.0f && mTinit<75.5f))){
-                            if (mbMonocular)
-                                ScaleRefinement();
-                        }
-                    }
-                }
+                //         // scale refinement
+                //         if (((mpAtlas->KeyFramesInMap())<=200) &&
+                //                 ((mTinit>25.0f && mTinit<25.5f)||
+                //                 (mTinit>35.0f && mTinit<35.5f)||
+                //                 (mTinit>45.0f && mTinit<45.5f)||
+                //                 (mTinit>55.0f && mTinit<55.5f)||
+                //                 (mTinit>65.0f && mTinit<65.5f)||
+                //                 (mTinit>75.0f && mTinit<75.5f))){
+                //             if (mbMonocular)
+                //                 ScaleRefinement();
+                //         }
+                //     }
+                // }
             }
 
 #ifdef REGISTER_TIMES

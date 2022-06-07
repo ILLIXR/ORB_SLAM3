@@ -1,4 +1,3 @@
-
 #include <functional>
 #include <fstream>
 #include <opencv/cv.hpp>
@@ -18,10 +17,9 @@
 #include "../common/phonebook.hpp"
 #include "../common/switchboard.hpp"
 #include "../common/data_format.hpp"
+#include "../common/relative_clock.hpp"
 
 using namespace ILLIXR;
-
-//#define ZED
 
 class orb_slam3 : public plugin {
 public:
@@ -30,25 +28,25 @@ public:
         , sb{pb->lookup_impl<switchboard>()}
         , _m_pose{sb->get_writer<pose_type>("slow_pose")}
         , _m_imu_integrator_input{sb->get_writer<imu_integrator_input>("imu_integrator_input")}
-        , _m_begin{std::chrono::system_clock::now()}
         , root_path{getenv("ORB_SLAM_ROOT")}
-        , imu_cam_buffer{nullptr}
     {
+
         _m_pose.put(_m_pose.allocate(
-			std::chrono::time_point<std::chrono::system_clock>{},
+			time_point{},
 			Eigen::Vector3f{0, 0, 0},
 			Eigen::Quaternionf{1, 0, 0, 0}
 		));
 
+        // TODO: set vocab and setting paths
         boost::filesystem::path vocab_path = root_path / "Vocabulary" / "ORBvoc.txt"; 
         boost::filesystem::path setting_path = root_path / "Examples" / "Stereo-Inertial" / "EuRoC.yaml";
 
         // set up ORB_SLAM
         SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, false);
 
-    #ifdef CV_HAS_METRICS
+#ifdef CV_HAS_METRICS
         cv::metrics::setAccount(new std::string{"-1"});
-    #endif
+#endif
     }
 
     virtual void start() override {
@@ -61,36 +59,21 @@ public:
     void feed_imu_cam(switchboard::ptr<const imu_cam_type> datum, std::size_t iteration_no){
         // Ensures that slam doesnt start before valid IMU readings come in
 		if (datum == NULL) {
-			assert(previous_timestamp == 0);
 			return;
 		}
-
-        // This ensures that every data point is coming in chronological order If youre failing this assert, 
-		// make sure that your data folder matches the name in offline_imu_cam/plugin.cc
-		double timestamp_in_seconds = double(datum->dataset_time/1e9);
-        assert(datum->dataset_time > previous_timestamp);
-
-        // std::cout << std::fixed << "Time of IMU/CAM: " << timestamp_in_seconds * 1e9 << " Lin a: " << 
-		// 	datum->angular_v[0] << ", " << datum->angular_v[1] << ", " << datum->angular_v[2] << ", " <<
-		// 	datum->linear_a[0] << ", " << datum->linear_a[1] << ", " << datum->linear_a[2] << std::endl;
 
         // Get current IMU data
         cv::Point3f acc(datum->linear_a.x(), datum->linear_a.y(), datum->linear_a.z());
         cv::Point3f gyro(datum->angular_v.x(), datum->angular_v.y(), datum->angular_v.z());
-        ORB_SLAM3::IMU::Point input_imu(acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z, timestamp_in_seconds);
+        ORB_SLAM3::IMU::Point input_imu(acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z, duration2double(datum->time.time_since_epoch()));
         
         // If there is cam data, load IMU data from the last cam data up until now
         if (datum->img0.has_value() || datum->img1.has_value()) {
             prev_input.clear();
-            std::cout << std::setprecision(17) << timestamp_in_seconds << std::endl;
             for (int i = 0; i < current_input.size(); i++){
-                ORB_SLAM3::IMU::Point input_im = current_input[i];
-                prev_input.push_back(input_im);
-                
-                // std::cout<<"IMU: "<<input_im.a.x()<<" "<<input_im.a.y()<<" "<<input_im.a.z()<<" "<<input_im.w.x()<<" "<<input_im.w.y()
-                // <<" "<<input_im.w.z()<<" "<<input_im.t<<std::endl;
+                ORB_SLAM3::IMU::Point imu_point = current_input[i];
+                prev_input.push_back(imu_point);
             }
-            //std::cout << "LOADED LAST IMU " << current_input.size() << std::endl;
             current_input.clear();
             current_input.push_back(input_imu);
 
@@ -102,63 +85,50 @@ public:
             return;
         }
 
-    #ifdef CV_HAS_METRICS
+#ifdef CV_HAS_METRICS
 		cv::metrics::setAccount(new std::string{std::to_string(iteration_no)});
 		if (iteration_no % 20 == 0) {
 		    cv::metrics::dump();
 		}
-    #else
-    #warning "No OpenCV metrics available. Please recompile OpenCV from git clone --branch 3.4.6-instrumented https://github.com/ILLIXR/opencv/. (see install_deps.sh)"
-    #endif
+#else
+#warning "No OpenCV metrics available. Please recompile OpenCV from git clone --branch 3.4.6-instrumented https://github.com/ILLIXR/opencv/. (see install_deps.sh)"
+#endif
 
-        // get the images
+        // get and clone the images
         cv::Mat img0{datum->img0.value()};
 		cv::Mat img1{datum->img1.value()};
 
         cv::Mat im_left = img0.clone();
         cv::Mat im_right = img1.clone();
-        //std::cout<<"LOADED CAM INTO SYSTEM__________"<<std::endl;
         
         // Pass the images and imu data to the SLAM system
-        slam_tracker = SLAM->returnTracker(im_left,im_right,timestamp_in_seconds,prev_input);
-
+        slam_tracker = SLAM->returnTracker(im_left,im_right,duration2double(datum->time.time_since_epoch()),prev_input);
         output_frame = slam_tracker->mCurrentFrame;
 
-
-        
+        // get translation matrix
         Eigen::Vector3f posf = output_frame.GetImuPosition();
         Eigen::Vector3f pos = Eigen::Vector3f{posf.x(), posf.y(), posf.z()};
         Eigen::Vector3d posd = Eigen::Vector3d{double(posf.x()), double(posf.y()), double(posf.z())};
 
-        //Eigen::Matrix3f rotmatrix = output_frame.GetPose().inverse().unit_quaternion();
+        //get rotation matrix
         Eigen::Quaternionf rotf(output_frame.GetImuRotation());
-        // Eigen::Quaternionf rot_offset (0.7071, 0, 0, 0.7071);
-        // rotf = rotf * rot_offset;
         Eigen::Quaternionf rot = Eigen::Quaternionf{rotf.w(),rotf.x(),rotf.y(),rotf.z()};
         Eigen::Quaterniond rotd = Eigen::Quaterniond{double(rotf.w()),double(rotf.x()),double(rotf.y()),double(rotf.z())};
 
-        
-        std::cout << "ROT: " << rot.w()<<" "<<rot.x()<<" "<<rot.y()<<" "<<rot.z()<<"\n";
-        std::cout << "POS: "<< pos[0]<<" "<<pos[1]<<" "<<pos[2]<<"\n";
-        
-
+        // get velocity vector
         Eigen::Vector3f velf = output_frame.GetVelocity();
         Eigen::Vector3d vel = Eigen::Vector3d{double(velf.x()), double(velf.y()), double(velf.z())};
 
+        // get bias
         ORB_SLAM3::IMU::Bias imu_bias = output_frame.mPredBias;
         Eigen::Vector3d gyro_bias(double(imu_bias.bwx), double(imu_bias.bwy), double(imu_bias.bwz));
         Eigen::Vector3d acc_bias(double(imu_bias.bax), double(imu_bias.bay), double(imu_bias.baz));
         Eigen::Vector3d zeroVector(0,0,0);
-        std::cout << "BIAS_ACC: " << imu_bias.bax << " " << imu_bias.bay <<" " << imu_bias.baz<<std::endl;
-        std::cout << "BIAS_GYRO: " << imu_bias.bwx << " " << imu_bias.bwy <<" " << imu_bias.bwz<<std::endl;
-        std::cout << "_________________________________" <<std::endl;
 
+        // break early if there is no bias
         if (gyro_bias == zeroVector && acc_bias == zeroVector) {
             return;
         }
-        // if (slam_tracker->mState == ORB_SLAM3::Tracking::eTrackingState::NOT_INITIALIZED) {
-        //     return;
-        // }
 
         assert(isfinite(posf[0]));
         assert(isfinite(posf[1]));
@@ -168,16 +138,15 @@ public:
         assert(isfinite(rotf.y()));
         assert(isfinite(rotf.z()));
         
-        if (slam_tracker->mState != ORB_SLAM3::Tracking::eTrackingState::NOT_INITIALIZED) {
         _m_pose.put(_m_pose.allocate(
             datum->time,
             pos,
             rot
         ));
-        
+    
         _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
-            timestamp_in_seconds,
-            0,
+            datum->time,
+            duration{0L},
             imu_params{
                 SLAM->settings_->noiseGyro(),
                 SLAM->settings_->noiseAcc(),
@@ -193,10 +162,8 @@ public:
             vel,
             rotd
         ));
-
         // clear imu vector if there are images
         prev_input.clear();
-        }
     }
 
     virtual ~orb_slam3() override {
@@ -207,20 +174,14 @@ private:
     const std::shared_ptr<switchboard> sb;
     switchboard::writer<pose_type> _m_pose;
     switchboard::writer<imu_integrator_input> _m_imu_integrator_input;
-    time_type _m_begin;
 
+    std::unique_ptr<ORB_SLAM3::System> SLAM;
     ORB_SLAM3::Tracking * slam_tracker;
     ORB_SLAM3::Frame output_frame;
-    std::unique_ptr<ORB_SLAM3::System> SLAM;
-
+    
     vector<ORB_SLAM3::IMU::Point> current_input;
     vector<ORB_SLAM3::IMU::Point> prev_input;
     boost::filesystem::path root_path;
-
-    cv::Mat M1l, M2l, M1r, M2r;
-
-    switchboard::ptr<const imu_cam_type> imu_cam_buffer;
-    double previous_timestamp = 0.0;
 };
 
 PLUGIN_MAIN(orb_slam3);

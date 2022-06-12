@@ -196,7 +196,8 @@ void LocalMapping::Run()
                 timeKFCulling_ms = std::chrono::duration_cast<std::chrono::duration<double,std::milli> >(time_EndKFCulling - time_EndLBA).count();
                 vdKFCulling_ms.push_back(timeKFCulling_ms);
 #endif
-
+                // TODO: Need to verify if removing these lines could affect the algorithm
+                
                 // if ((mTinit<50.0f) && mbInertial)
                 // {
                 //     if(mpCurrentKeyFrame->GetMap()->isImuInitialized() && mpTracker->mState==Tracking::OK) // Enter here everytime local-mapping is called

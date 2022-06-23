@@ -7,7 +7,7 @@ plugin.dbg.so: build/Debug/Makefile
 	./build.sh && \
 	make -C build/Debug  && \
 	rm -f $@ && \
-	ln -s build/Debug/libplugin.so plugin.dbg.so && \
+	ln -s lib/libplugin.so plugin.dbg.so && \
 	true
 
 .PHONY: plugin.opt.so

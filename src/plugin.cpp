@@ -39,7 +39,8 @@ public:
 
         // TODO: set vocab and setting paths
         boost::filesystem::path vocab_path = root_path / "Vocabulary" / "ORBvoc.txt"; 
-        boost::filesystem::path setting_path = root_path / "Examples" / "Stereo-Inertial" / "EuRoC.yaml";
+        // boost::filesystem::path setting_path = root_path / "Examples" / "Stereo-Inertial" / "EuRoC.yaml";
+        boost::filesystem::path setting_path = root_path / "Examples" / "Stereo-Inertial" / "ETH3D.yaml";
 
         // set up ORB_SLAM
         SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, false);

@@ -43,7 +43,7 @@ public:
         boost::filesystem::path setting_path = root_path / "Examples" / "Stereo-Inertial" / "ETH3D.yaml";
 
         // set up ORB_SLAM
-        SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, false);
+        SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, true);
 
 #ifdef CV_HAS_METRICS
         cv::metrics::setAccount(new std::string{"-1"});
@@ -75,9 +75,9 @@ public:
                 ORB_SLAM3::IMU::Point imu_point = current_input[i];
                 prev_input.push_back(imu_point);
             }
+            prev_input.push_back(input_imu);
             current_input.clear();
-            current_input.push_back(input_imu);
-
+        
             assert((datum->img0.has_value() && datum->img1.has_value()) || (!datum->img0.has_value() && !datum->img1.has_value()));
 
         // If there is not cam data this func call, break early
@@ -103,7 +103,8 @@ public:
         cv::Mat im_right = img1.clone();
         
         // Pass the images and imu data to the SLAM system
-        slam_tracker = SLAM->returnTracker(im_left,im_right,duration2double(datum->time.time_since_epoch()),prev_input);
+        SLAM->TrackStereo(im_left,im_right,duration2double(datum->time.time_since_epoch()),prev_input);
+        slam_tracker = SLAM->mpTracker;
         output_frame = slam_tracker->mCurrentFrame;
 
         // get translation matrix
@@ -121,7 +122,7 @@ public:
         Eigen::Vector3d vel = Eigen::Vector3d{double(velf.x()), double(velf.y()), double(velf.z())};
 
         // get bias
-        ORB_SLAM3::IMU::Bias imu_bias = output_frame.mPredBias;
+        ORB_SLAM3::IMU::Bias imu_bias = output_frame.mImuBias;
         Eigen::Vector3d gyro_bias(double(imu_bias.bwx), double(imu_bias.bwy), double(imu_bias.bwz));
         Eigen::Vector3d acc_bias(double(imu_bias.bax), double(imu_bias.bay), double(imu_bias.baz));
         Eigen::Vector3d zeroVector(0,0,0);

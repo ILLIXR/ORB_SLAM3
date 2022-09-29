@@ -3,6 +3,7 @@
 #include <opencv/cv.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <chrono> 
 
 #include <math.h>
 #include <eigen3/Eigen/Dense>
@@ -18,6 +19,8 @@
 #include "../common/switchboard.hpp"
 #include "../common/data_format.hpp"
 #include "../common/relative_clock.hpp"
+
+// #define stereo
 
 using namespace ILLIXR;
 
@@ -37,13 +40,28 @@ public:
 			Eigen::Quaternionf{1, 0, 0, 0}
 		));
 
+        max_runtime = -10;
+        min_runtime = 1000000000;
+        count = 0;
+        total_runtime = 0;
+
+#ifdef stereo
+        fs.open ("/home/henrydc/stereo-imupose.txt", std::fstream::out);
+        cam_count = 0;
+#else
+        fs.open ("/home/henrydc/rgbdpose.txt", std::fstream::out);
+#endif
+        
+
         // TODO: set vocab and setting paths
         boost::filesystem::path vocab_path = root_path / "Vocabulary" / "ORBvoc.txt"; 
-        // boost::filesystem::path setting_path = root_path / "Examples" / "Stereo-Inertial" / "EuRoC.yaml";
+#ifdef stereo
         boost::filesystem::path setting_path = root_path / "Examples" / "Stereo-Inertial" / "ETH3D.yaml";
-
-        // set up ORB_SLAM
-        SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, true);
+        SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, false);
+#else
+        boost::filesystem::path setting_path = root_path / "Examples" / "RGB-D" / "ETH3D.yaml";
+        SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::RGBD, false);
+#endif
 
 #ifdef CV_HAS_METRICS
         cv::metrics::setAccount(new std::string{"-1"});
@@ -63,26 +81,34 @@ public:
 			return;
 		}
 
+        if (datum->img0.has_value() || datum->img1.has_value()) {
+            cam_count++;
+        }
+        if (cam_count == 0) {
+            return;
+        }
         // Get current IMU data
         cv::Point3f acc(datum->linear_a.x(), datum->linear_a.y(), datum->linear_a.z());
         cv::Point3f gyro(datum->angular_v.x(), datum->angular_v.y(), datum->angular_v.z());
         ORB_SLAM3::IMU::Point input_imu(acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z, duration2double(datum->time.time_since_epoch()));
+        // ORB_SLAM3::IMU::Point input_imu(acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z, (double)datum->dataset_time/(double)1e9);
+        current_input.push_back(input_imu);
         
         // If there is cam data, load IMU data from the last cam data up until now
         if (datum->img0.has_value() || datum->img1.has_value()) {
-            prev_input.clear();
-            for (int i = 0; i < current_input.size(); i++){
-                ORB_SLAM3::IMU::Point imu_point = current_input[i];
-                prev_input.push_back(imu_point);
+            if (cam_count > 1) {
+                prev_input.clear();
+                for (int i = 0; i < current_input.size(); i++){
+                    ORB_SLAM3::IMU::Point imu_point = current_input[i];
+                    prev_input.push_back(imu_point);
+                }
+                current_input.clear();
+                assert((datum->img1.has_value() && datum->img0.has_value()) || (!datum->img1.has_value() && !datum->img0.has_value()));
             }
-            prev_input.push_back(input_imu);
-            current_input.clear();
         
-            assert((datum->img0.has_value() && datum->img1.has_value()) || (!datum->img0.has_value() && !datum->img1.has_value()));
 
         // If there is not cam data this func call, break early
 		} else {
-            current_input.push_back(input_imu);
             return;
         }
 
@@ -95,27 +121,62 @@ public:
 #warning "No OpenCV metrics available. Please recompile OpenCV from git clone --branch 3.4.6-instrumented https://github.com/ILLIXR/opencv/. (see install_deps.sh)"
 #endif
 
-        // get and clone the images
-        cv::Mat img0{datum->img0.value()};
-		cv::Mat img1{datum->img1.value()};
+#ifdef stereo
+        cv::Mat cam0{datum->img0.value()};
+		cv::Mat cam1{datum->img1.value()};
 
-        cv::Mat im_left = img0.clone();
-        cv::Mat im_right = img1.clone();
-        
+        cv::Mat input_cam0 = cam0.clone();
+        cv::Mat input_cam1 = cam1.clone();
+
+        auto start = std::chrono::steady_clock::now();
         // Pass the images and imu data to the SLAM system
-        SLAM->TrackStereo(im_left,im_right,duration2double(datum->time.time_since_epoch()),prev_input);
-        slam_tracker = SLAM->mpTracker;
+        Sophus::SE3f mat_pose = SLAM->TrackStereo(input_cam0, input_cam1, duration2double(datum->time.time_since_epoch()), prev_input);
+        // Sophus::SE3f mat_pose = SLAM->TrackStereo(cam0, cam1, duration2double(datum->time.time_since_epoch())).inverse();
+        auto end = std::chrono::steady_clock::now();
+        
+#else  
+        // get and clone the images
+        cv::Mat img{datum->img1.value()};
+		cv::Mat depth{datum->depth.value()};
+
+        cv::Mat input_cam = img.clone();
+        cv::Mat input_depth = depth.clone();
+
+        auto start = std::chrono::steady_clock::now();
+        // Pass the images and imu data to the SLAM system
+        Sophus::SE3f mat_pose = SLAM->TrackRGBD(input_cam,input_depth,duration2double(datum->time.time_since_epoch())).inverse();   
+        auto end = std::chrono::steady_clock::now();
+
+#endif
+        double duration = std::chrono::duration<double>(end-start).count();
+        total_runtime += duration;
+        min_runtime = std::min(min_runtime, duration);
+        max_runtime = std::max(max_runtime, duration);
+        count++;
+        std::cout << "current: " << duration << " min: " << min_runtime << " max: " << max_runtime << " avg: " << total_runtime / count << std::endl;
+        slam_tracker = SLAM->getTracker();
+        if (slam_tracker->mState != ORB_SLAM3::Tracking::eTrackingState::OK && slam_tracker->mState != ORB_SLAM3::Tracking::eTrackingState::OK_KLT) {
+            return;
+        }
         output_frame = slam_tracker->mCurrentFrame;
 
         // get translation matrix
-        Eigen::Vector3f posf = output_frame.GetImuPosition();
-        Eigen::Vector3f pos = Eigen::Vector3f{posf.x(), posf.y(), posf.z()};
-        Eigen::Vector3d posd = Eigen::Vector3d{double(posf.x()), double(posf.y()), double(posf.z())};
+        Eigen::Vector3f trans = mat_pose.translation();
+        Eigen::Vector3d posd = Eigen::Vector3d{double(trans.x()), double(trans.y()), double(trans.z())};
 
         //get rotation matrix
-        Eigen::Quaternionf rotf(output_frame.GetImuRotation());
-        Eigen::Quaternionf rot = Eigen::Quaternionf{rotf.w(),rotf.x(),rotf.y(),rotf.z()};
-        Eigen::Quaterniond rotd = Eigen::Quaterniond{double(rotf.w()),double(rotf.x()),double(rotf.y()),double(rotf.z())};
+        Eigen::Quaternionf quat = mat_pose.unit_quaternion();
+        Eigen::Quaterniond rotd = Eigen::Quaterniond{double(quat.w()),double(quat.x()),double(quat.y()),double(quat.z())};
+
+        // dump to file and compare using EVO in both RGBD and Stereo
+        fs << std::fixed << std::setprecision(6) << (double)datum->dataset_time/(double)1e9 << setprecision(9) 
+                                                    << " " << trans[0] 
+                                                    << " " << trans[1] 
+                                                    << " " << trans[2] 
+                                                    << " " << quat.x() 
+                                                    << " " << quat.y() 
+                                                    << " " << quat.z() 
+                                                    << " " << quat.w() << std::endl;
 
         // get velocity vector
         Eigen::Vector3f velf = output_frame.GetVelocity();
@@ -128,10 +189,15 @@ public:
         Eigen::Vector3d zeroVector(0,0,0);
 
         // break early if there is no bias
-        if (gyro_bias == zeroVector && acc_bias == zeroVector) {
-            return;
-        }
+        // if (gyro_bias == zeroVector && acc_bias == zeroVector) {
+        //     return;
+        // }
 
+#ifdef stereo
+        // SLAM->SaveTrajectoryETH3D("/home/henrydc/stereo-imupose_save.txt");
+#else
+        // SLAM->SaveTrajectoryETH3D("/home/henrydc/rgbdpose_save.txt");
+#endif
         assert(isfinite(posf[0]));
         assert(isfinite(posf[1]));
         assert(isfinite(posf[2]));
@@ -142,13 +208,13 @@ public:
         
         _m_pose.put(_m_pose.allocate(
             datum->time,
-            pos,
-            rot
+            trans,
+            quat
         ));
     
         _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
             datum->time,
-            duration{0L},
+            ILLIXR::duration{0L},
             imu_params{
                 SLAM->settings_->noiseGyro(),
                 SLAM->settings_->noiseAcc(),
@@ -166,6 +232,7 @@ public:
         ));
         // clear imu vector if there are images
         prev_input.clear();
+
     }
 
     virtual ~orb_slam3() override {
@@ -176,6 +243,13 @@ private:
     const std::shared_ptr<switchboard> sb;
     switchboard::writer<pose_type> _m_pose;
     switchboard::writer<imu_integrator_input> _m_imu_integrator_input;
+    std::fstream fs;
+    int cam_count;
+
+    double min_runtime;
+    double max_runtime;
+    double total_runtime;
+    int count;
 
     std::unique_ptr<ORB_SLAM3::System> SLAM;
     ORB_SLAM3::Tracking * slam_tracker;

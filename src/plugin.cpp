@@ -20,7 +20,7 @@
 #include "../common/data_format.hpp"
 #include "../common/relative_clock.hpp"
 
-// #define stereo
+#define stereo
 
 using namespace ILLIXR;
 
@@ -46,20 +46,23 @@ public:
         total_runtime = 0;
 
 #ifdef stereo
-        fs.open ("/home/henrydc/stereo-imupose.txt", std::fstream::out);
+        //fs.open ("/home/henrydc/stereo-imupose.txt", std::fstream::out);
         cam_count = 0;
 #else
-        fs.open ("/home/henrydc/rgbdpose.txt", std::fstream::out);
+        //fs.open ("/home/henrydc/rgbdpose.txt", std::fstream::out);
 #endif
         
 
         // TODO: set vocab and setting paths
-        boost::filesystem::path vocab_path = root_path / "Vocabulary" / "ORBvoc.txt"; 
+        //boost::filesystem::path vocab_path = root_path / "Vocabulary" / "ORBvoc.txt";
+	boost::filesystem::path vocab_path = "/home/illixr/henry/ORB_SLAM3/Vocabulary/ORBvoc.txt"; 
 #ifdef stereo
-        boost::filesystem::path setting_path = root_path / "Examples" / "Stereo-Inertial" / "ETH3D.yaml";
+        //boost::filesystem::path setting_path = root_path / "Examples" / "Stereo-Inertial" / "ETH3D.yaml";
+	boost::filesystem::path setting_path = "/home/illixr/henry/ORB_SLAM3/Examples/Stereo-Inertial/ETH3D.yaml";
         SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, false);
 #else
-        boost::filesystem::path setting_path = root_path / "Examples" / "RGB-D" / "ETH3D.yaml";
+        //boost::filesystem::path setting_path = root_path / "Examples" / "RGB-D" / "ETH3D.yaml";
+	boost::filesystem::path setting_path = "/home/illixr/henry/ORB_SLAM3/Examples/RGB-D/ETH3D.yaml";
         SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::RGBD, false);
 #endif
 
@@ -130,7 +133,7 @@ public:
 
         auto start = std::chrono::steady_clock::now();
         // Pass the images and imu data to the SLAM system
-        Sophus::SE3f mat_pose = SLAM->TrackStereo(input_cam0, input_cam1, duration2double(datum->time.time_since_epoch()), prev_input);
+        Sophus::SE3f mat_pose = SLAM->TrackStereo(input_cam0, input_cam1, duration2double(datum->time.time_since_epoch()), prev_input).inverse();
         // Sophus::SE3f mat_pose = SLAM->TrackStereo(cam0, cam1, duration2double(datum->time.time_since_epoch())).inverse();
         auto end = std::chrono::steady_clock::now();
         
@@ -153,8 +156,8 @@ public:
         min_runtime = std::min(min_runtime, duration);
         max_runtime = std::max(max_runtime, duration);
         count++;
-        std::cout << "current: " << duration << " min: " << min_runtime << " max: " << max_runtime << " avg: " << total_runtime / count << std::endl;
-        slam_tracker = SLAM->getTracker();
+        std::cout <<  "timestamp: " << duration2double(datum->time.time_since_epoch()) << " current: " << duration << " min: " << min_runtime << " max: " << max_runtime << " avg: " << total_runtime / count << std::endl;
+        slam_tracker = SLAM->mpTracker;
         if (slam_tracker->mState != ORB_SLAM3::Tracking::eTrackingState::OK && slam_tracker->mState != ORB_SLAM3::Tracking::eTrackingState::OK_KLT) {
             return;
         }
@@ -187,11 +190,12 @@ public:
         Eigen::Vector3d gyro_bias(double(imu_bias.bwx), double(imu_bias.bwy), double(imu_bias.bwz));
         Eigen::Vector3d acc_bias(double(imu_bias.bax), double(imu_bias.bay), double(imu_bias.baz));
         Eigen::Vector3d zeroVector(0,0,0);
-
+#ifdef stereo
         // break early if there is no bias
-        // if (gyro_bias == zeroVector && acc_bias == zeroVector) {
-        //     return;
-        // }
+        if (gyro_bias == zeroVector && acc_bias == zeroVector) {
+            return;
+        }
+#endif
 
 #ifdef stereo
         // SLAM->SaveTrajectoryETH3D("/home/henrydc/stereo-imupose_save.txt");

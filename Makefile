@@ -4,7 +4,6 @@ CC := clang-10
 
 .PHONY: plugin.dbg.so
 plugin.dbg.so: build/Debug/Makefile
-	./build.sh && \
 	make -C build/Debug  && \
 	rm -f $@ && \
 	ln -s lib/libplugin.so plugin.dbg.so && \
@@ -12,7 +11,6 @@ plugin.dbg.so: build/Debug/Makefile
 
 .PHONY: plugin.opt.so
 plugin.opt.so: build/Release/Makefile
-	./build.sh && \
 	make -C build/Release  && \
 	rm -f $@ && \
 	ln -s lib/libplugin.so plugin.opt.so && \

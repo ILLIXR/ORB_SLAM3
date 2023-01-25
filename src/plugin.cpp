@@ -30,9 +30,11 @@ public:
         : plugin{name_, pb_}
         , sb{pb->lookup_impl<switchboard>()}
         , _m_pose{sb->get_writer<pose_type>("slow_pose")}
+        // , root_path{getenv("ORB_SLAM_ROOT")}
+        // , vocab_path{root_path / "Vocabulary" / "ORBvoc.txt"}
         , _m_imu_integrator_input{sb->get_writer<imu_integrator_input>("imu_integrator_input")}
-        , root_path{getenv("ORB_SLAM_ROOT")}
-        , vocab_path{root_path / "Vocabulary" / "ORBvoc.txt"}
+        , _m_cam{sb->get_buffered_reader<cam_type>("cam")}
+        , vocab_path{"/home/henrydc/tinker/ILLIXR/ILLIXR-Repos/ORB_SLAM3/Vocabulary/ORBvoc.txt"}
     {
         
         // set initial slow pose 
@@ -48,8 +50,11 @@ public:
 
         // set setting path and initialize ORB_SLAM3
 #ifdef STEREO_IMU
-        setting_path = root_path / "Examples" / "Stereo-Inertial" / "ETH3D.yaml";
+        // setting_path = root_path / "Examples" / "Stereo-Inertial" / "ETH3D.yaml";
+        setting_path = "/home/henrydc/tinker/ILLIXR/ILLIXR-Repos/ORB_SLAM3/Examples/Stereo-Inertial/EuRoC.yaml";
         SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, false);
+        
+
 #else
         setting_path = root_path / "Examples" / "RGB-D" / "ETH3D.yaml";
         SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::RGBD, false);
@@ -59,7 +64,7 @@ public:
     virtual void start() override {
         plugin::start();
 #ifdef STEREO_IMU
-        sb->schedule<rgb_depth_type>(id, "rgb_depth", [&](switchboard::ptr<const rgb_depth_type> datum, std::size_t iteration_no) {
+        sb->schedule<imu_type>(id, "imu", [&](switchboard::ptr<const imu_type> datum, std::size_t iteration_no) {
 			this->feed_imu_cam(datum, iteration_no);
 		});
 #else
@@ -69,39 +74,33 @@ public:
 #endif
     }
 
-    void feed_imu_cam(switchboard::ptr<const rgb_depth_type> datum, std::size_t iteration_no){
+    void feed_imu_cam(switchboard::ptr<const imu_type> datum, std::size_t iteration_no){
         // Ensures that slam doesnt start before valid IMU readings come in
 		if (datum == NULL) {
 			return;
 		}
-        if (datum->img0.has_value() || datum->img1.has_value()) {
-            cam_count++;
-        }
-        if (cam_count == 0) {
-            return;
-        }
 
         // Get current IMU data
         cv::Point3f acc(datum->linear_a.x(), datum->linear_a.y(), datum->linear_a.z());
         cv::Point3f gyro(datum->angular_v.x(), datum->angular_v.y(), datum->angular_v.z());
         ORB_SLAM3::IMU::Point input_imu(acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z, duration2double(datum->time.time_since_epoch()));
         current_input.push_back(input_imu);
+
+        switchboard::ptr<const cam_type> cam;
+		// Buffered Async:
+		cam = _m_cam.size() == 0 ? nullptr : _m_cam.dequeue();
+		// If there is not cam data this func call, break early
+		if (!cam) {
+			return;
+		}
         
         // If there is cam data, load IMU data from the last cam data up until now
-        if (datum->img0.has_value() || datum->img1.has_value()) {
-            if (cam_count > 1) {
-                prev_input.clear();
-                for (int i = 0; i < current_input.size(); i++){
-                    ORB_SLAM3::IMU::Point imu_point = current_input[i];
-                    prev_input.push_back(imu_point);
-                }
-                current_input.clear();
-                assert((datum->img1.has_value() && datum->img0.has_value()) || (!datum->img1.has_value() && !datum->img0.has_value()));
-            }
-        // If there is not cam data this func call, break early
-		} else {
-            return;
+        prev_input.clear();
+        for (int i = 0; i < current_input.size(); i++){
+            ORB_SLAM3::IMU::Point imu_point = current_input[i];
+            prev_input.push_back(imu_point);
         }
+        current_input.clear();
 
 #ifdef CV_HAS_METRICS
 		cv::metrics::setAccount(new std::string{std::to_string(iteration_no)});
@@ -112,13 +111,11 @@ public:
 #warning "No OpenCV metrics available. Please recompile OpenCV from git clone --branch 3.4.6-instrumented https://github.com/ILLIXR/opencv/. (see install_deps.sh)"
 #endif
 
-        cv::Mat cam0{datum->img0.value()};
-		cv::Mat cam1{datum->img1.value()};
-        cv::Mat input_cam0 = cam0.clone();
-        cv::Mat input_cam1 = cam1.clone();
+        cv::Mat cam0{cam->img0};
+		cv::Mat cam1{cam->img1};
 
         auto start = std::chrono::steady_clock::now();
-        Sophus::SE3f mat_pose = SLAM->TrackStereo(input_cam0, input_cam1, duration2double(datum->time.time_since_epoch()), prev_input).inverse();
+        Sophus::SE3f mat_pose = SLAM->TrackStereo(cam0, cam1, duration2double(cam->time.time_since_epoch()), prev_input).inverse();
         auto end = std::chrono::steady_clock::now();
         
 #ifndef NDEBUG
@@ -128,7 +125,7 @@ public:
         min_runtime = std::min(min_runtime, duration);
         max_runtime = std::max(max_runtime, duration);
         num_runtime++;
-        printf("timestamp: %f current: %f min: %f max: %f average: %f", duration2double(datum->time.time_since_epoch()), duration, 
+        printf("timestamp: %f current: %f min: %f max: %f average: %f", duration2double(cam->time.time_since_epoch()), duration, 
             min_runtime, max_runtime, total_runtime / num_runtime);
 #endif
         
@@ -147,7 +144,7 @@ public:
         Eigen::Quaterniond rotd = Eigen::Quaterniond{double(quat.w()),double(quat.x()),double(quat.y()),double(quat.z())};
 
         //dump to file and compare using EVO in both RGBD and Stereo
-        dumped_pose << std::fixed << std::setprecision(6) << duration2double(datum->time.time_since_epoch()) << setprecision(9) 
+        dumped_pose << std::fixed << std::setprecision(6) << duration2double(cam->time.time_since_epoch()) << setprecision(9) 
                                                     << " " << trans[0] 
                                                     << " " << trans[1] 
                                                     << " " << trans[2] 
@@ -183,13 +180,13 @@ public:
         assert(isfinite(rotf.z()));
         
         _m_pose.put(_m_pose.allocate(
-            datum->time,
+            cam->time,
             trans,
             quat
         ));
     
         _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
-            datum->time,
+            cam->time,
             ILLIXR::duration{0L},
             imu_params{
                 SLAM->settings_->noiseGyro(),
@@ -227,8 +224,8 @@ public:
 #endif
         
         // get and clone the images
-        cv::Mat img{datum->rgb.value()};
-		cv::Mat depth{datum->depth.value()};
+        cv::Mat img{datum->rgb};
+		cv::Mat depth{datum->depth};
         cv::Mat input_cam = img.clone();
         cv::Mat input_depth = depth.clone();
 
@@ -303,6 +300,8 @@ public:
 private:
     const std::shared_ptr<switchboard> sb;
     switchboard::writer<pose_type> _m_pose;
+    std::shared_ptr<RelativeClock> _m_rtc; 
+    switchboard::buffered_reader<cam_type> _m_cam;
     switchboard::writer<imu_integrator_input> _m_imu_integrator_input;
     int cam_count;
 

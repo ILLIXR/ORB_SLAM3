@@ -30,11 +30,11 @@ public:
         : plugin{name_, pb_}
         , sb{pb->lookup_impl<switchboard>()}
         , _m_pose{sb->get_writer<pose_type>("slow_pose")}
-        // , root_path{getenv("ORB_SLAM_ROOT")}
-        // , vocab_path{root_path / "Vocabulary" / "ORBvoc.txt"}
+        , root_path{getenv("ORB_SLAM_ROOT")}
+        , vocab_path{root_path / "Vocabulary" / "ORBvoc.txt"}
         , _m_imu_integrator_input{sb->get_writer<imu_integrator_input>("imu_integrator_input")}
         , _m_cam{sb->get_buffered_reader<cam_type>("cam")}
-        , vocab_path{"/home/henrydc/tinker/ILLIXR/ILLIXR-Repos/ORB_SLAM3/Vocabulary/ORBvoc.txt"}
+        , cam_buffer{nullptr}
     {
         
         // set initial slow pose 
@@ -50,8 +50,7 @@ public:
 
         // set setting path and initialize ORB_SLAM3
 #ifdef STEREO_IMU
-        // setting_path = root_path / "Examples" / "Stereo-Inertial" / "ETH3D.yaml";
-        setting_path = "/home/henrydc/tinker/ILLIXR/ILLIXR-Repos/ORB_SLAM3/Examples/Stereo-Inertial/EuRoC.yaml";
+        setting_path = root_path / "Examples" / "Stereo-Inertial" / "EuRoC.yaml";
         SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, false);
         
 
@@ -69,7 +68,7 @@ public:
 		});
 #else
         sb->schedule<rgb_depth_type>(id, "rgb_depth", [&](switchboard::ptr<const rgb_depth_type> datum, std::size_t iteration_no) {
-			this->feed_imu_cam(datum, iteration_no);
+			this->feed_rgbd(datum, iteration_no);
 		});
 #endif
     }
@@ -86,13 +85,24 @@ public:
         ORB_SLAM3::IMU::Point input_imu(acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z, duration2double(datum->time.time_since_epoch()));
         current_input.push_back(input_imu);
 
-        switchboard::ptr<const cam_type> cam;
-		// Buffered Async:
-		cam = _m_cam.size() == 0 ? nullptr : _m_cam.dequeue();
-		// If there is not cam data this func call, break early
-		if (!cam) {
-			return;
-		}
+		if (cam_buffer) {
+            if (cam_buffer->time <= datum->time) {
+                cam = cam_buffer;
+                cam_buffer = nullptr;
+            } else {
+                return;
+            }
+        } else {
+            cam = _m_cam.size() == 0 ? nullptr : _m_cam.dequeue();
+            // If there is not cam data this func call, break early
+            if (!cam) {
+                return;
+            }
+            if (cam->time > datum->time) {
+                cam_buffer = cam;
+                return;
+            }
+        }
         
         // If there is cam data, load IMU data from the last cam data up until now
         prev_input.clear();
@@ -143,16 +153,6 @@ public:
         Eigen::Quaternionf quat = mat_pose.unit_quaternion();
         Eigen::Quaterniond rotd = Eigen::Quaterniond{double(quat.w()),double(quat.x()),double(quat.y()),double(quat.z())};
 
-        //dump to file and compare using EVO in both RGBD and Stereo
-        dumped_pose << std::fixed << std::setprecision(6) << duration2double(cam->time.time_since_epoch()) << setprecision(9) 
-                                                    << " " << trans[0] 
-                                                    << " " << trans[1] 
-                                                    << " " << trans[2] 
-                                                    << " " << quat.x() 
-                                                    << " " << quat.y() 
-                                                    << " " << quat.z() 
-                                                    << " " << quat.w() << std::endl;
-
         // get velocity vector
         Eigen::Vector3f velf = output_frame.GetVelocity();
         Eigen::Vector3d vel = Eigen::Vector3d{double(velf.x()), double(velf.y()), double(velf.z())};
@@ -163,8 +163,6 @@ public:
         Eigen::Vector3d gyro_bias(double(imu_bias.bwx), double(imu_bias.bwy), double(imu_bias.bwz));
         Eigen::Vector3d acc_bias(double(imu_bias.bax), double(imu_bias.bay), double(imu_bias.baz));
         Eigen::Vector3d zeroVector(0,0,0);
-        std::cout << "GYRO: " << gyro_bias.x() << " " << gyro_bias.y() << " " << gyro_bias.z() << std::endl;
-        std::cout << "ACC: " << acc_bias.x() << " " << acc_bias.y() << " " << acc_bias.z() << std::endl;
 
         // break early if there is no bias
         if (gyro_bias == zeroVector && acc_bias == zeroVector) {
@@ -207,7 +205,8 @@ public:
         prev_input.clear();
 
     }
-    
+
+#ifndef STEREO_IMU
     void feed_rgbd(switchboard::ptr<const rgb_depth_type> datum, std::size_t iteration_no){
         // Ensures that slam doesnt start before valid IMU readings come in
 		if (datum == NULL) {
@@ -246,7 +245,7 @@ public:
 
         slam_tracker = SLAM->mpTracker;
         if (slam_tracker->mState != ORB_SLAM3::Tracking::eTrackingState::OK) {
-            std::cout << "ORB SLAM";
+            return;
         }
         output_frame = slam_tracker->mCurrentFrame;
 
@@ -258,21 +257,9 @@ public:
         Eigen::Quaternionf quat = mat_pose.unit_quaternion();
         Eigen::Quaterniond rotd = Eigen::Quaterniond{double(quat.w()),double(quat.x()),double(quat.y()),double(quat.z())};
 
-#ifndef NDEBUG
-        dumped_pose << std::fixed << std::setprecision(6) << duration2double(datum->time.time_since_epoch()) << setprecision(9) 
-                                                    << " " << trans[0] 
-                                                    << " " << trans[1] 
-                                                    << " " << trans[2] 
-                                                    << " " << quat.x() 
-                                                    << " " << quat.y() 
-                                                    << " " << quat.z() 
-                                                    << " " << quat.w() << std::endl;
-#endif
-
         // get velocity vector
         Eigen::Vector3f velf = output_frame.GetVelocity();
         Eigen::Vector3d vel = Eigen::Vector3d{double(velf.x()), double(velf.y()), double(velf.z())};
-        std::cout << "VEL: " << velf.x() << " " << velf.y() << " " << velf.z() << std::endl;
 
         assert(isfinite(posf[0]));
         assert(isfinite(posf[1]));
@@ -292,6 +279,7 @@ public:
         prev_input.clear();
 
     }
+#endif
 
     virtual ~orb_slam3() override {
         SLAM->Shutdown();
@@ -302,10 +290,11 @@ private:
     switchboard::writer<pose_type> _m_pose;
     std::shared_ptr<RelativeClock> _m_rtc; 
     switchboard::buffered_reader<cam_type> _m_cam;
+    switchboard::ptr<const cam_type> cam;
+    switchboard::ptr<const cam_type> cam_buffer;
     switchboard::writer<imu_integrator_input> _m_imu_integrator_input;
     int cam_count;
 
-    std::fstream dumped_pose;
     double min_runtime = 1000000000;
     double max_runtime = -10;
     double total_runtime = 0;

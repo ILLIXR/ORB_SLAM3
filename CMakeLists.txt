@@ -4,7 +4,7 @@ project(ORB_SLAM3)
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
 ENDIF()
-
+include(ExternalProject)
 MESSAGE("Build type: " ${CMAKE_BUILD_TYPE})
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}   -O3")
@@ -28,59 +28,72 @@ else()
    message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Please use a different C++ compiler.")
 endif()
 
-LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
+if(NOT Eigen3_FOUND)
+    find_package(Eigen3 3.1.0 REQUIRED)
+endif()
 
-find_package(OpenCV 3)
-   if(NOT OpenCV_FOUND)
-      message(FATAL_ERROR "OpenCV > 3 not found.")
-   endif()
+if(NOT OpenCV_FOUND)
+    find_package(OpenCV REQUIRED)
+endif()
 
-find_package(Eigen3 3.1.0 REQUIRED)
+if(NOT realsense2_FOUND)
+    find_package(realsense2 QUIET)
+endif()
+
+if(NOT DBoW2_FOUND)
+    find_package(DBoW2 REQUIRED)
+endif()
+
 find_package(Pangolin REQUIRED)
-find_package(realsense2)
+find_package(g2o REQUIRED)
+find_package(Sophus REQUIRED)
+
+#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
+add_definitions(-DG2O_USE_VENDORED_CERES)
 
 include_directories(
-${PROJECT_SOURCE_DIR}
-${PROJECT_SOURCE_DIR}/include
-${PROJECT_SOURCE_DIR}/include/CameraModels
-${PROJECT_SOURCE_DIR}/Thirdparty/Sophus
-${EIGEN3_INCLUDE_DIR}
-${Pangolin_INCLUDE_DIRS}
+        ${PROJECT_SOURCE_DIR}
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/include/CameraModels
+        ${EIGEN3_INCLUDE_DIR}
+        ${Sophus_INCLUDE_DIRS}
+        ${DBoW2_INCLUDE_DIRS}
+        ${Pangolin_INCLUDE_DIRS}
+        ${g2o_INCLUDE_DIRS}
+        ${Boost_INCLUDE_DIR}
+        ${OpenCV_INCLUDE_DIRS}
+        ${CMAKE_INSTALL_PREFIX}/include
 )
 
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
-
-
-
 add_library(${PROJECT_NAME} SHARED
-src/System.cc
-src/Tracking.cc
-src/LocalMapping.cc
-src/LoopClosing.cc
-src/ORBextractor.cc
-src/ORBmatcher.cc
-src/FrameDrawer.cc
-src/Converter.cc
-src/MapPoint.cc
-src/KeyFrame.cc
-src/Atlas.cc
-src/Map.cc
-src/MapDrawer.cc
-src/Optimizer.cc
-src/Frame.cc
-src/KeyFrameDatabase.cc
-src/Sim3Solver.cc
-src/Viewer.cc
-src/ImuTypes.cc
-src/G2oTypes.cc
-src/CameraModels/Pinhole.cpp
-src/CameraModels/KannalaBrandt8.cpp
-src/OptimizableTypes.cpp
-src/MLPnPsolver.cpp
-src/GeometricTools.cc
-src/TwoViewReconstruction.cc
-src/Config.cc
-src/Settings.cc
+        src/CameraModels/Pinhole.cpp
+        src/CameraModels/KannalaBrandt8.cpp
+        src/Atlas.cc
+        src/Config.cc
+        src/Converter.cc
+        src/Frame.cc
+        src/FrameDrawer.cc
+        src/G2oTypes.cc
+        src/GeometricTools.cc
+        src/ImuTypes.cc
+        src/KeyFrame.cc
+        src/KeyFrameDatabase.cc
+        src/LocalMapping.cc
+        src/LoopClosing.cc
+        src/Map.cc
+        src/MapDrawer.cc
+        src/MapPoint.cc
+        src/MLPnPsolver.cpp
+        src/ORBextractor.cc
+        src/ORBmatcher.cc
+        src/Optimizer.cc
+        src/OptimizableTypes.cpp
+        src/Sim3Solver.cc
+        src/Settings.cc
+        src/System.cc
+        src/Tracking.cc
+        src/TwoViewReconstruction.cc
+        src/Viewer.cc
 include/System.h
 include/Tracking.h
 include/LocalMapping.h
@@ -112,17 +125,15 @@ include/SerializationUtils.h
 include/Config.h
 include/Settings.h)
 
-add_subdirectory(Thirdparty/g2o)
 
 target_link_libraries(${PROJECT_NAME}
-${OpenCV_LIBS}
-${EIGEN3_LIBS}
-${Pangolin_LIBRARIES}
-${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
-${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
--lboost_filesystem
--lboost_serialization
--lcrypto
+        ${OpenCV_LIBS}
+        ${EIGEN3_LIBS}
+        ${Pangolin_LIBRARIES}
+        ${DBoW2_LIBRARIES}
+        ${g2o_LIBRARIES}
+        boost_filesystem
+        boost_serialization
 )
 
 # If RealSense SDK is found the library is added and its examples compiled
@@ -139,3 +150,8 @@ endif()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/src)
 add_library(plugin SHARED src/plugin.cpp)
 target_link_libraries(plugin ${PROJECT_NAME})
+
+#get_cmake_property(_variableNames VARIABLES)
+#foreach (_variableName ${_variableNames})
+#    message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach()

@@ -59,18 +59,13 @@ KeyFrameTrajectory.txt
 CameraTrajectory.txt
 kf_*.txt
 f_*.txt
-Thirdparty/DBoW2/build/
-Thirdparty/DBoW2/lib/
-Thirdparty/g2o/build/
-Thirdparty/g2o/config.h
-Thirdparty/g2o/lib/
 Vocabulary/ORBvoc.txt
 build/
 
 lib/
 
 cmake_modules/
-cmake-build-debug/
+cmake-build-*
 
 ExecMean.txt
 SessionInfo.txt

@@ -156,3 +156,5 @@ endif()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/src)
 add_library(plugin SHARED src/plugin.cpp)
 target_link_libraries(plugin ${PROJECT_NAME})
+
+install(TARGETS plugin DESTINATION lib)

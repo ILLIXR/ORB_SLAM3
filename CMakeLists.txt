@@ -158,3 +158,4 @@ add_library(plugin SHARED src/plugin.cpp)
 target_link_libraries(plugin ${PROJECT_NAME})
 
 install(TARGETS plugin DESTINATION lib)
+install(TARGETS ${PROJECT_NAME} DESTINATION lib)

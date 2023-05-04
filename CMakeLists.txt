@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20.1)
+cmake_minimum_required(VERSION 3.16)
 project(ORB_SLAM3)
 
 IF(NOT CMAKE_BUILD_TYPE)
@@ -156,8 +156,8 @@ endif()
 
 # FOR ILLIXR
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/src)
-add_library(plugin SHARED src/plugin.cpp)
-target_link_libraries(plugin ${PROJECT_NAME})
+add_library(plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} SHARED src/plugin.cpp)
+target_link_libraries(plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} ${PROJECT_NAME})
 
-install(TARGETS plugin DESTINATION lib)
+install(TARGETS plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} DESTINATION lib)
 install(TARGETS ${PROJECT_NAME} DESTINATION lib)

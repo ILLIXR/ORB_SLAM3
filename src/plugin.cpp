@@ -19,11 +19,11 @@
 #include "Optimizer.h"
 #include "Tracking.h"
 
-#include "common/plugin.hpp"
-#include "common/phonebook.hpp"
-#include "common/switchboard.hpp"
-#include "common/data_format.hpp"
-#include "common/relative_clock.hpp"
+#include "illixr/plugin.hpp"
+#include "illixr/phonebook.hpp"
+#include "illixr/switchboard.hpp"
+#include "illixr/data_format.hpp"
+#include "illixr/relative_clock.hpp"
 
 #define STEREO_IMU
 

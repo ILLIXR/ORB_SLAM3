@@ -1,10 +1,6 @@
 #include <functional>
 #include <fstream>
-#ifdef USING_OPENCV4
 #include <opencv2/core.hpp>
-#else
-#include <opencv/cv.hpp>
-#endif
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <chrono>
@@ -19,6 +15,7 @@
 #include "Optimizer.h"
 #include "Tracking.h"
 
+#include "illixr/opencv_data_types.hpp"
 #include "illixr/plugin.hpp"
 #include "illixr/phonebook.hpp"
 #include "illixr/switchboard.hpp"

@@ -135,7 +135,9 @@ target_link_libraries(${PROJECT_NAME}
         ${EIGEN3_LIBS}
         ${Pangolin_LIBRARIES}
         ${DBoW2_LIBRARIES}
-        ${g2o_LIBRARIES}
+        g2o::core
+        g2o::types_sba
+        g2o::solver_eigen
         boost_filesystem
         boost_serialization
         )

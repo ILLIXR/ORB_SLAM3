@@ -21,8 +21,8 @@
 #define KEYFRAME_H
 
 #include "MapPoint.h"
-#include "DBoW2/BowVector.h"
-#include "DBoW2/FeatureVector.h"
+#include "DBoW2_OS3/BowVector.h"
+#include "DBoW2_OS3/FeatureVector.h"
 #include "ORBVocabulary.h"
 #include "ORBextractor.h"
 #include "Frame.h"

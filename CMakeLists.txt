@@ -43,8 +43,8 @@ if(NOT realsense2_FOUND)
     find_package(realsense2 QUIET)
 endif()
 
-if(NOT DBoW2_FOUND)
-    find_package(DBoW2 REQUIRED)
+if(NOT DBoW2_OS3_FOUND)
+    find_package(DBoW2_OS3 REQUIRED)
 endif()
 
 find_package(Pangolin REQUIRED)
@@ -60,7 +60,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/include/CameraModels
         ${EIGEN3_INCLUDE_DIR}
         ${Sophus_INCLUDE_DIRS}
-        ${DBoW2_INCLUDE_DIRS}
+        ${DBoW2_OS3_INCLUDE_DIRS}
         ${Pangolin_INCLUDE_DIRS}
         ${g2o_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIR}
@@ -134,7 +134,7 @@ target_link_libraries(${PROJECT_NAME}
         ${OpenCV_LIBS}
         ${EIGEN3_LIBS}
         ${Pangolin_LIBRARIES}
-        ${DBoW2_LIBRARIES}
+        ${DBoW2_OS3_LIBRARIES}
         g2o::core
         g2o::types_sba
         g2o::solver_eigen

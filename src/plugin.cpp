@@ -108,9 +108,13 @@ public:
 
         // If there is cam data, load IMU data from the last cam data up until now
         prev_input.clear();
-        for (int i = 0; i < current_input.size(); i++){
-            ORB_SLAM3::IMU::Point imu_point = current_input[i];
-            prev_input.push_back(imu_point);
+        if (!is_first_cam) {
+            for (int i = 0; i < current_input.size(); i++){
+                ORB_SLAM3::IMU::Point imu_point = current_input[i];
+                prev_input.push_back(imu_point);
+            }
+        } else {
+            is_first_cam = false;
         }
         current_input.clear();
 
@@ -166,11 +170,6 @@ public:
         Eigen::Vector3d acc_bias(double(imu_bias.bax), double(imu_bias.bay), double(imu_bias.baz));
         Eigen::Vector3d zeroVector(0,0,0);
 
-        // break early if there is no bias
-        if (gyro_bias == zeroVector && acc_bias == zeroVector) {
-            return;
-        }
-
         assert(isfinite(posd[0]));
         assert(isfinite(posd[1]));
         assert(isfinite(posd[2]));
@@ -185,7 +184,9 @@ public:
                 quat
         ));
 
-        _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
+        // break early if there is no bias
+        if (gyro_bias != zeroVector && acc_bias != zeroVector) {
+            _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
                 cam->time,
                 ILLIXR::duration{0L},
                 imu_params{
@@ -202,9 +203,12 @@ public:
                 posd,
                 vel,
                 rotd
-        ));
+            ));
+        }
+
         // clear imu vector if there are images
         prev_input.clear();
+        cam_buffer = nullptr;
 
     }
 
@@ -295,7 +299,7 @@ private:
     switchboard::ptr<const cam_type> cam;
     switchboard::ptr<const cam_type> cam_buffer;
     switchboard::writer<imu_integrator_input> _m_imu_integrator_input;
-    int cam_count;
+    bool is_first_cam = true;
 
     double min_runtime = 1000000000;
     double max_runtime = -10;

@@ -131,7 +131,7 @@ public:
         cv::Mat cam1{cam->img1};
 
         auto start = std::chrono::steady_clock::now();
-        Sophus::SE3f mat_pose = SLAM->TrackStereo(cam0, cam1, duration2double(cam->time.time_since_epoch()), prev_input).inverse();
+        SLAM->TrackStereo(cam0, cam1, duration2double(cam->time.time_since_epoch()), prev_input);
         auto end = std::chrono::steady_clock::now();
 
 #ifndef NDEBUG
@@ -152,11 +152,11 @@ public:
         output_frame = slam_tracker->mCurrentFrame;
 
         // get translation matrix
-        Eigen::Vector3f trans = mat_pose.translation();
+        Eigen::Vector3f trans = output_frame.GetImuPose().translation();
         Eigen::Vector3d posd = Eigen::Vector3d{double(trans.x()), double(trans.y()), double(trans.z())};
 
         //get rotation matrix
-        Eigen::Quaternionf quat = mat_pose.unit_quaternion();
+        Eigen::Quaternionf quat = output_frame.GetImuPose().unit_quaternion();
         Eigen::Quaterniond rotd = Eigen::Quaterniond{double(quat.w()),double(quat.x()),double(quat.y()),double(quat.z())};
 
         // get velocity vector
@@ -185,26 +185,26 @@ public:
         ));
 
         // break early if there is no bias
-        if (gyro_bias != zeroVector && acc_bias != zeroVector) {
-            _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
-                cam->time,
-                ILLIXR::duration{0L},
-                imu_params{
-                        SLAM->settings_->noiseGyro(),
-                        SLAM->settings_->noiseAcc(),
-                        SLAM->settings_->gyroWalk(),
-                        SLAM->settings_->accWalk(),
-                        .n_gravity = Eigen::Matrix<double,3,1>(0.0, 0.0, -9.81),
-                        .imu_integration_sigma = 1.0,
-                        SLAM->settings_->imuFrequency()
-                },
-                acc_bias,
-                gyro_bias,
-                posd,
-                vel,
-                rotd
-            ));
-        }
+        // if (gyro_bias != zeroVector && acc_bias != zeroVector) {
+        _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
+            cam->time,
+            ILLIXR::duration{0L},
+            imu_params{
+                    SLAM->settings_->noiseGyro(),
+                    SLAM->settings_->noiseAcc(),
+                    SLAM->settings_->gyroWalk(),
+                    SLAM->settings_->accWalk(),
+                    .n_gravity = Eigen::Matrix<double,3,1>(0.0, 0.0, -9.81),
+                    .imu_integration_sigma = 1.0,
+                    SLAM->settings_->imuFrequency()
+            },
+            acc_bias,
+            gyro_bias,
+            posd,
+            vel,
+            rotd
+        ));
+        // }
 
         // clear imu vector if there are images
         prev_input.clear();
@@ -235,7 +235,7 @@ public:
         cv::Mat input_depth = depth.clone();
 
         auto start = std::chrono::steady_clock::now();
-        Sophus::SE3f mat_pose = SLAM->TrackRGBD(input_cam,input_depth,duration2double(datum->time.time_since_epoch())).inverse();
+        SLAM->TrackRGBD(input_cam,input_depth,duration2double(datum->time.time_since_epoch())).inverse();
         auto end = std::chrono::steady_clock::now();
 
 #ifndef NDEBUG
@@ -256,11 +256,11 @@ public:
         output_frame = slam_tracker->mCurrentFrame;
 
         // get translation matrix
-        Eigen::Vector3f trans = mat_pose.translation();
+        Eigen::Vector3f trans = output_frame.GetPoseInverse().translation();
         Eigen::Vector3d posd = Eigen::Vector3d{double(trans.x()), double(trans.y()), double(trans.z())};
 
         //get rotation matrix
-        Eigen::Quaternionf quat = mat_pose.unit_quaternion();
+        Eigen::Quaternionf quat = output_frame.GetPoseInverse().unit_quaternion();
         Eigen::Quaterniond rotd = Eigen::Quaterniond{double(quat.w()),double(quat.x()),double(quat.y()),double(quat.z())};
 
         // get velocity vector

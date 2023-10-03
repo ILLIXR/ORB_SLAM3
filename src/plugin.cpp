@@ -50,14 +50,18 @@ public:
         cv::metrics::setAccount(new std::string{"-1"});
 #endif
 
+        assert(boost::filesystem::exists(vocab_path));
+
         // set setting path and initialize ORB_SLAM3
 #ifdef STEREO_IMU
         setting_path = root_path / "Examples" / "Stereo-Inertial" / "EuRoC.yaml";
+        assert(boost::filesystem::exists(setting_path));
         SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, false);
 
 
 #else
         setting_path = root_path / "Examples" / "RGB-D" / "ETH3D.yaml";
+        assert(boost::filesystem::exists(setting_path));
         SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::RGBD, false);
 #endif
     }
@@ -162,13 +166,17 @@ public:
         // get velocity vector
         Eigen::Vector3f velf = output_frame.GetVelocity();
         Eigen::Vector3d vel = Eigen::Vector3d{double(velf.x()), double(velf.y()), double(velf.z())};
-        std::cout << "VEL: " << velf.x() << " " << velf.y() << " " << velf.z() << std::endl;
 
         // get bias
         ORB_SLAM3::IMU::Bias imu_bias = output_frame.mImuBias;
         Eigen::Vector3d gyro_bias(double(imu_bias.bwx), double(imu_bias.bwy), double(imu_bias.bwz));
         Eigen::Vector3d acc_bias(double(imu_bias.bax), double(imu_bias.bay), double(imu_bias.baz));
         Eigen::Vector3d zeroVector(0,0,0);
+
+        // IMU has not been initialized yet
+        if (gyro_bias == zeroVector && acc_bias == zeroVector) {
+            return;
+        }
 
         assert(isfinite(posd[0]));
         assert(isfinite(posd[1]));
@@ -184,8 +192,6 @@ public:
                 quat
         ));
 
-        // break early if there is no bias
-        // if (gyro_bias != zeroVector && acc_bias != zeroVector) {
         _m_imu_integrator_input.put(_m_imu_integrator_input.allocate(
             cam->time,
             ILLIXR::duration{0L},
@@ -204,7 +210,6 @@ public:
             vel,
             rotd
         ));
-        // }
 
         // clear imu vector if there are images
         prev_input.clear();

@@ -204,14 +204,14 @@ void LocalMapping::Run()
                         if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA1()){
                             if (mTinit>5.0f)
                             {
-                                cout << "start VIBA 1" << endl;
+                                std::cout << "start VIBA 1" << std::endl;
                                 mpCurrentKeyFrame->GetMap()->SetIniertialBA1();
                                 if (mbMonocular)
                                     InitializeIMU(1.f, 1e5, true);
                                 else
                                     InitializeIMU(1.f, 1e5, true);
 
-                                cout << "end VIBA 1" << endl;
+                                std::cout << "end VIBA 1" << std::endl;
                             }
                         }
 

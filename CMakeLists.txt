@@ -162,7 +162,7 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/Vocabula
 install(TARGETS plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} DESTINATION lib)
 install(TARGETS ${PROJECT_NAME} DESTINATION lib)
 install(FILES ${CMAKE_SOURCE_DIR}/Vocabulary/ORBvoc.txt DESTINATION share/ORB_SLAM3/Vocabulary)
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/Examples/ DESTINATION share/ORB_SLAM3)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/Examples DESTINATION share/ORB_SLAM3)
 
 get_cmake_property(_variableNames VARIABLES)
 foreach (_variableName ${_variableNames})

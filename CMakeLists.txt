@@ -62,7 +62,6 @@ include_directories(
         ${Sophus_INCLUDE_DIRS}
         ${DBoW2_OS3_INCLUDE_DIRS}
         ${Pangolin_INCLUDE_DIRS}
-        ${g2o_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIR}
         ${OpenCV_INCLUDE_DIRS}
         ${CMAKE_INSTALL_PREFIX}/include
@@ -159,3 +158,8 @@ target_link_libraries(plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} ${PROJECT_NAME})
 
 install(TARGETS plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} DESTINATION lib)
 install(TARGETS ${PROJECT_NAME} DESTINATION lib)
+
+get_cmake_property(_variableNames VARIABLES)
+foreach (_variableName ${_variableNames})
+    message(STATUS "${_variableName}=${${_variableName}}")
+endforeach()

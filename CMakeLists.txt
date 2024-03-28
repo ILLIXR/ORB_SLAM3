@@ -156,8 +156,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/src)
 add_library(plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} SHARED src/plugin.cpp)
 target_link_libraries(plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} ${PROJECT_NAME})
 
+execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/Vocabulary/ORBvoc.txt.tar.gz
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/Vocabulary/
+)
 install(TARGETS plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} DESTINATION lib)
 install(TARGETS ${PROJECT_NAME} DESTINATION lib)
+install(FILES ${CMAKE_SOURCE_DIR}/Vocabulary/ORBvoc.txt DESTINATION share/ORB_SLAM3/Vocabulary)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/Examples/ DESTINATION share/ORB_SLAM3)
 
 get_cmake_property(_variableNames VARIABLES)
 foreach (_variableName ${_variableNames})

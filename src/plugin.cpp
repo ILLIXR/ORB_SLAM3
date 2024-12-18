@@ -22,8 +22,9 @@
 #include "illixr/data_format.hpp"
 #include "illixr/relative_clock.hpp"
 
-// #define STEREO_IMU
-#define ZED
+// To use the ZED config, uncomment the ZED define and comment out the STEREO_IMU define.
+#define STEREO_IMU
+// #define ZED
 
 using namespace ILLIXR;
 

@@ -22,7 +22,8 @@
 #include "illixr/data_format.hpp"
 #include "illixr/relative_clock.hpp"
 
-#define STEREO_IMU
+// #define STEREO_IMU
+#define ZED
 
 using namespace ILLIXR;
 
@@ -57,8 +58,10 @@ public:
         setting_path = root_path / "Examples" / "Stereo-Inertial" / "EuRoC.yaml";
         assert(boost::filesystem::exists(setting_path));
         SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, false);
-
-
+#elif defined(ZED)
+        setting_path = root_path  / "Examples" / "Stereo-Inertial" / "Zed.yaml";
+        assert(boost::filesystem::exists(setting_path));
+        SLAM = std::make_unique<ORB_SLAM3::System>(vocab_path.string(), setting_path.string(), ORB_SLAM3::System::IMU_STEREO, false);
 #else
         setting_path = root_path / "Examples" / "RGB-D" / "ETH3D.yaml";
         assert(boost::filesystem::exists(setting_path));
@@ -68,7 +71,7 @@ public:
 
     virtual void start() override {
         plugin::start();
-#ifdef STEREO_IMU
+#if defined(STEREO_IMU) || defined(ZED)
         sb->schedule<imu_type>(id, "imu", [&](switchboard::ptr<const imu_type> datum, std::size_t iteration_no) {
             this->feed_imu_cam(datum, iteration_no);
         });
@@ -217,7 +220,7 @@ public:
 
     }
 
-#ifndef STEREO_IMU
+#if !defined(STEREO_IMU) && !defined(ZED)
     void feed_rgbd(switchboard::ptr<const rgb_depth_type> datum, std::size_t iteration_no){
         // Ensures that slam doesnt start before valid IMU readings come in
 		if (datum == NULL) {

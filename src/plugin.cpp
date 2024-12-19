@@ -34,12 +34,13 @@ public:
             : plugin{name_, pb_}
             , sb{pb->lookup_impl<switchboard>()}
             , _m_pose{sb->get_writer<pose_type>("slow_pose")}
-            , root_path{getenv("ORB_SLAM_ROOT")}
-            , vocab_path{root_path / "Vocabulary" / "ORBvoc.txt"}
             , _m_imu_integrator_input{sb->get_writer<imu_integrator_input>("imu_integrator_input")}
             , _m_cam{sb->get_buffered_reader<cam_type>("cam")}
             , cam_buffer{nullptr}
     {
+        assert(getenv("ORB_SLAM_ROOT"));
+        root_path = boost::filesystem::path(getenv("ORB_SLAM_ROOT"));
+        vocab_path = root_path / "Vocabulary" / "ORBvoc.txt";
 
         // set initial slow pose
         _m_pose.put(_m_pose.allocate(

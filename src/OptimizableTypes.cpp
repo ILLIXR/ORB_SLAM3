@@ -59,7 +59,7 @@ namespace ORB_SLAM3 {
                      -z , 0.f, x, 0.f, 1.f, 0.f,
                      y ,  -x , 0.f, 0.f, 0.f, 1.f;
 
-        _jacobianOplusXi = -pCamera->projectJac(xyz_trans) * SE3deriv;
+        _jacobianOplusXi << -pCamera->projectJac(xyz_trans) * SE3deriv;
     }
 
     bool EdgeSE3ProjectXYZOnlyPoseToBody::read(std::istream& is){
@@ -103,7 +103,7 @@ namespace ORB_SLAM3 {
                 -z_w , 0.f, x_w, 0.f, 1.f, 0.f,
                 y_w ,  -x_w , 0.f, 0.f, 0.f, 1.f;
 
-        _jacobianOplusXi = -pCamera->projectJac(X_r) * mTrl.rotation().toRotationMatrix() * SE3deriv;
+        _jacobianOplusXi << -pCamera->projectJac(X_r) * mTrl.rotation().toRotationMatrix() * SE3deriv;
     }
 
     EdgeSE3ProjectXYZ::EdgeSE3ProjectXYZ() : BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexPointXYZ, g2o::VertexSE3Expmap>() {
@@ -156,7 +156,7 @@ namespace ORB_SLAM3 {
                 -z , 0.f, x, 0.f, 1.f, 0.f,
                 y ,  -x , 0.f, 0.f, 0.f, 1.f;
 
-        _jacobianOplusXj = projectJac * SE3deriv;
+        _jacobianOplusXj << projectJac * SE3deriv;
     }
 
     EdgeSE3ProjectXYZToBody::EdgeSE3ProjectXYZToBody() : BaseBinaryEdge<2, Eigen::Vector2d, g2o::VertexPointXYZ, g2o::VertexSE3Expmap>() {
@@ -198,7 +198,7 @@ namespace ORB_SLAM3 {
         Eigen::Vector3d X_l = T_lw.map(X_w);
         Eigen::Vector3d X_r = mTrl.map(T_lw.map(X_w));
 
-        _jacobianOplusXi =  -pCamera->projectJac(X_r) * T_rw.rotation().toRotationMatrix();
+        _jacobianOplusXi << -pCamera->projectJac(X_r) * T_rw.rotation().toRotationMatrix();
 
         double x = X_l[0];
         double y = X_l[1];
@@ -209,7 +209,7 @@ namespace ORB_SLAM3 {
                 -z , 0.f, x, 0.f, 1.f, 0.f,
                 y ,  -x , 0.f, 0.f, 0.f, 1.f;
 
-        _jacobianOplusXj = -pCamera->projectJac(X_r) * mTrl.rotation().toRotationMatrix() * SE3deriv;
+        _jacobianOplusXj << -pCamera->projectJac(X_r) * mTrl.rotation().toRotationMatrix() * SE3deriv;
     }
 
 

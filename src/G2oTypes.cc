@@ -358,7 +358,7 @@ void EdgeMono::linearizeOplus()
     const Eigen::Matrix3d &Rcb = VPose->estimate().Rcb[cam_idx];
 
     const Eigen::Matrix<double,2,3> proj_jac = VPose->estimate().pCamera[cam_idx]->projectJac(Xc);
-    _jacobianOplusXi = -proj_jac * Rcw;
+    _jacobianOplusXi << -proj_jac * Rcw;
 
     Eigen::Matrix<double,3,6> SE3deriv;
     double x = Xb(0);
@@ -369,7 +369,7 @@ void EdgeMono::linearizeOplus()
             -z , 0.0, x, 0.0, 1.0, 0.0,
             y ,  -x , 0.0, 0.0, 0.0, 1.0;
 
-    _jacobianOplusXj = proj_jac * Rcb * SE3deriv; // TODO optimize this product
+    _jacobianOplusXj << proj_jac * Rcb * SE3deriv; // TODO optimize this product
 }
 
 void EdgeMonoOnlyPose::linearizeOplus()
@@ -391,7 +391,7 @@ void EdgeMonoOnlyPose::linearizeOplus()
     SE3deriv << 0.0, z,   -y, 1.0, 0.0, 0.0,
             -z , 0.0, x, 0.0, 1.0, 0.0,
             y ,  -x , 0.0, 0.0, 0.0, 1.0;
-    _jacobianOplusXi = proj_jac * Rcb * SE3deriv; // symbol different becasue of update mode
+    _jacobianOplusXi << proj_jac * Rcb * SE3deriv; // symbol different becasue of update mode
 }
 
 void EdgeStereo::linearizeOplus()
@@ -412,7 +412,7 @@ void EdgeStereo::linearizeOplus()
     proj_jac.block<1,3>(2,0) = proj_jac.block<1,3>(0,0);
     proj_jac(2,2) += bf*inv_z2;
 
-    _jacobianOplusXi = -proj_jac * Rcw;
+    _jacobianOplusXi << -proj_jac * Rcw;
 
     Eigen::Matrix<double,3,6> SE3deriv;
     double x = Xb(0);
@@ -423,7 +423,7 @@ void EdgeStereo::linearizeOplus()
             -z , 0.0, x, 0.0, 1.0, 0.0,
             y ,  -x , 0.0, 0.0, 0.0, 1.0;
 
-    _jacobianOplusXj = proj_jac * Rcb * SE3deriv;
+    _jacobianOplusXj << proj_jac * Rcb * SE3deriv;
 }
 
 void EdgeStereoOnlyPose::linearizeOplus()
@@ -450,7 +450,7 @@ void EdgeStereoOnlyPose::linearizeOplus()
     SE3deriv << 0.0, z,   -y, 1.0, 0.0, 0.0,
             -z , 0.0, x, 0.0, 1.0, 0.0,
             y ,  -x , 0.0, 0.0, 0.0, 1.0;
-    _jacobianOplusXi = proj_jac * Rcb * SE3deriv;
+    _jacobianOplusXi << proj_jac * Rcb * SE3deriv;
 }
 
 VertexVelocity::VertexVelocity(KeyFrame* pKF)

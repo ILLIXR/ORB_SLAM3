@@ -47,7 +47,7 @@ if(NOT DBoW2_OS3_FOUND)
     find_package(DBoW2_OS3 REQUIRED)
 endif()
 
-find_package(Pangolin REQUIRED)
+# find_package(Pangolin REQUIRED)
 find_package(g2o REQUIRED)
 find_package(Sophus REQUIRED)
 
@@ -61,7 +61,7 @@ include_directories(
         ${EIGEN3_INCLUDE_DIR}
         ${Sophus_INCLUDE_DIRS}
         ${DBoW2_OS3_INCLUDE_DIRS}
-        ${Pangolin_INCLUDE_DIRS}
+        # ${Pangolin_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIR}
         ${OpenCV_INCLUDE_DIRS}
         ${CMAKE_INSTALL_PREFIX}/include
@@ -132,7 +132,7 @@ add_library(${PROJECT_NAME} SHARED
 target_link_libraries(${PROJECT_NAME}
         ${OpenCV_LIBS}
         ${EIGEN3_LIBS}
-        ${Pangolin_LIBRARIES}
+        # ${Pangolin_LIBRARIES}
         ${DBoW2_OS3_LIBRARIES}
         g2o::core
         g2o::types_sba

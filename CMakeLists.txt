@@ -163,8 +163,3 @@ install(TARGETS plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} DESTINATION lib)
 install(TARGETS ${PROJECT_NAME} DESTINATION lib)
 install(FILES ${CMAKE_SOURCE_DIR}/Vocabulary/ORBvoc.txt DESTINATION share/ORB_SLAM3/Vocabulary)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/Examples DESTINATION share/ORB_SLAM3)
-
-get_cmake_property(_variableNames VARIABLES)
-foreach (_variableName ${_variableNames})
-    message(STATUS "${_variableName}=${${_variableName}}")
-endforeach()

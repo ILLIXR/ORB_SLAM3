@@ -15,11 +15,12 @@
 #include "Optimizer.h"
 #include "Tracking.h"
 
-#include "illixr/opencv_data_types.hpp"
+#include "illixr/data_format/opencv_data_types.hpp"
 #include "illixr/plugin.hpp"
 #include "illixr/phonebook.hpp"
 #include "illixr/switchboard.hpp"
-#include "illixr/data_format.hpp"
+#include "illixr/data_format/pose.hpp"
+#include "illixr/data_format/imu.hpp"
 #include "illixr/relative_clock.hpp"
 
 // To use the ZED config, uncomment the ZED define and comment out the STEREO_IMU define.
@@ -27,15 +28,16 @@
 // #define ZED
 
 using namespace ILLIXR;
+using namespace ILLIXR::data_format;
 
 class orb_slam3 : public plugin {
 public:
     orb_slam3(std::string name_, phonebook* pb_)
             : plugin{name_, pb_}
-            , sb{pb->lookup_impl<switchboard>()}
+            , sb{phonebook_->lookup_impl<switchboard>()}
             , _m_pose{sb->get_writer<pose_type>("slow_pose")}
             , _m_imu_integrator_input{sb->get_writer<imu_integrator_input>("imu_integrator_input")}
-            , _m_cam{sb->get_buffered_reader<cam_type>("cam")}
+            , _m_cam{sb->get_buffered_reader<binocular_cam_type>("cam")}
             , cam_buffer{nullptr}
     {
         assert(getenv("ORB_SLAM_ROOT"));
@@ -74,7 +76,7 @@ public:
     virtual void start() override {
         plugin::start();
 #if defined(STEREO_IMU) || defined(ZED)
-        sb->schedule<imu_type>(id, "imu", [&](switchboard::ptr<const imu_type> datum, std::size_t iteration_no) {
+        sb->schedule<imu_type>(id_, "imu", [&](switchboard::ptr<const imu_type> datum, std::size_t iteration_no) {
             this->feed_imu_cam(datum, iteration_no);
         });
 #else
@@ -93,7 +95,7 @@ public:
         // Get current IMU data
         cv::Point3f acc(datum->linear_a.x(), datum->linear_a.y(), datum->linear_a.z());
         cv::Point3f gyro(datum->angular_v.x(), datum->angular_v.y(), datum->angular_v.z());
-        ORB_SLAM3::IMU::Point input_imu(acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z, duration2double(datum->time.time_since_epoch()));
+        ORB_SLAM3::IMU::Point input_imu(acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z, duration_to_double(datum->time.time_since_epoch()));
         current_input.push_back(input_imu);
 
         if (cam_buffer) {
@@ -136,11 +138,11 @@ public:
 #warning "No OpenCV metrics available. Please recompile OpenCV from git clone --branch 3.4.6-instrumented https://github.com/ILLIXR/opencv/. (see install_deps.sh)"
 #endif
 
-        cv::Mat cam0{cam->img0};
-        cv::Mat cam1{cam->img1};
+        cv::Mat cam0{cam->at(image::LEFT_EYE)};
+        cv::Mat cam1{cam->at(image::RIGHT_EYE)};
 
         auto start = std::chrono::steady_clock::now();
-        SLAM->TrackStereo(cam0, cam1, duration2double(cam->time.time_since_epoch()), prev_input);
+        SLAM->TrackStereo(cam0, cam1, duration_to_double(cam->time.time_since_epoch()), prev_input);
         auto end = std::chrono::steady_clock::now();
 
 #ifndef NDEBUG
@@ -150,7 +152,7 @@ public:
         min_runtime = std::min(min_runtime, duration);
         max_runtime = std::max(max_runtime, duration);
         num_runtime++;
-        printf("timestamp: %f current: %f min: %f max: %f average: %f", duration2double(cam->time.time_since_epoch()), duration,
+        printf("timestamp: %f current: %f min: %f max: %f average: %f", duration_to_double(cam->time.time_since_epoch()), duration,
             min_runtime, max_runtime, total_runtime / num_runtime);
 #endif
 
@@ -304,10 +306,10 @@ public:
 private:
     const std::shared_ptr<switchboard> sb;
     switchboard::writer<pose_type> _m_pose;
-    std::shared_ptr<RelativeClock> _m_rtc;
-    switchboard::buffered_reader<cam_type> _m_cam;
-    switchboard::ptr<const cam_type> cam;
-    switchboard::ptr<const cam_type> cam_buffer;
+    std::shared_ptr<relative_clock> _m_rtc;
+    switchboard::buffered_reader<binocular_cam_type> _m_cam;
+    switchboard::ptr<const binocular_cam_type> cam;
+    switchboard::ptr<const binocular_cam_type> cam_buffer;
     switchboard::writer<imu_integrator_input> _m_imu_integrator_input;
     bool is_first_cam = true;
 

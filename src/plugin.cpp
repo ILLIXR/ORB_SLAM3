@@ -15,11 +15,11 @@ orb_slam3::orb_slam3(const std::string& name_, phonebook* pb_)
         , imu_integrator_input_{switchboard_->get_writer<imu_integrator_input>("imu_integrator_input")}
         , cam_reader_{switchboard_->get_buffered_reader<binocular_cam_type>("cam")}
         , cam_buffer_{nullptr} {
-    assert(getenv("ILLIXR_BINARY_PATH"));
-    root_path_  = boost::filesystem::path(getenv("ILLIXR_BINARY_PATH"));
+    assert(switchboard_->get_env_char("ILLIXR_BINARY_PATH"));
+    root_path_  = boost::filesystem::path(switchboard_->get_env("ILLIXR_BINARY_PATH"));
     root_path_ = root_path_  / ".." / "share" / "ORB_SLAM3";
     vocab_path_ = root_path_ / "Vocabulary" / "ORBvoc.txt";
-    use_zed_    = ILLIXR::str_to_bool(ILLIXR::getenv_or("USE_ZED", "False"));
+    use_zed_    = switchboard_->get_env_bool("USE_ZED", "False");
     // set initial slow pose
     pose_.put(pose_.allocate(time_point{}, Eigen::Vector3f{0, 0, 0}, Eigen::Quaternionf{1, 0, 0, 0}));
 

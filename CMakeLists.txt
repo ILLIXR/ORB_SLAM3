@@ -132,7 +132,6 @@ add_library(${PROJECT_NAME} SHARED
 target_link_libraries(${PROJECT_NAME}
         ${OpenCV_LIBS}
         ${EIGEN3_LIBS}
-        # ${Pangolin_LIBRARIES}
         ${DBoW2_OS3_LIBRARIES}
         g2o::core
         g2o::types_sba
@@ -153,7 +152,9 @@ endif()
 
 # FOR ILLIXR
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/src)
-add_library(plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} SHARED src/plugin.cpp)
+add_library(plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} SHARED src/plugin.cpp
+            src/plugin.hpp
+)
 target_link_libraries(plugin.orb_slam3${ILLIXR_BUILD_SUFFIX} ${PROJECT_NAME})
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/Vocabulary/ORBvoc.txt.tar.gz

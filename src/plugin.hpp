@@ -1,5 +1,7 @@
 #pragma once
 
+#include "System.h"
+
 #include "illixr/data_format/imu.hpp"
 #include "illixr/data_format/opencv_data_types.hpp"
 #include "illixr/data_format/pose.hpp"
@@ -7,14 +9,8 @@
 #include "illixr/plugin.hpp"
 #include "illixr/relative_clock.hpp"
 #include "illixr/switchboard.hpp"
-#include "ImuTypes.h"
-#include "Optimizer.h"
-#include "Tracking.h"
 
 #include <boost/filesystem.hpp>
-#include <System.h>
-#include <vector>
-
 
 namespace ILLIXR {
 
@@ -24,7 +20,7 @@ public:
 
     void start() override;
 
-    void feed_imu_cam(switchboard::ptr<const data_format::imu_type> datum, std::size_t iteration_no);
+    void feed_imu_cam(const switchboard::ptr<const data_format::imu_type>& datum, std::size_t iteration_no);
 
     /*
     #if !defined(STEREO_IMU) && !defined(ZED)
@@ -52,7 +48,7 @@ private:
     int    num_runtime_   = 0;
 
     std::unique_ptr<ORB_SLAM3::System> SLAM_;
-    ORB_SLAM3::Tracking*               slam_tracker_;
+    ORB_SLAM3::Tracking*               slam_tracker_ = nullptr;
     ORB_SLAM3::Frame                   output_frame_;
 
     std::vector<ORB_SLAM3::IMU::Point> current_input_;

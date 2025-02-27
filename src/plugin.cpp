@@ -1,42 +1,24 @@
 #include "plugin.hpp"
 
-#include "illixr/data_format/imu.hpp"
-#include "illixr/data_format/opencv_data_types.hpp"
-#include "illixr/data_format/pose.hpp"
-#include "illixr/phonebook.hpp"
-#include "illixr/plugin.hpp"
-#include "illixr/relative_clock.hpp"
-#include "illixr/switchboard.hpp"
-#include "ImuTypes.h"
-// #include "Optimizer.h"
-#include "Tracking.h"
-
-#include <boost/filesystem.hpp>
-#include <chrono>
 #include <cmath>
 #include <eigen3/Eigen/Dense>
-#include <fstream>
-// #include <functional>
 #include <opencv2/core.hpp>
-// #include <opencv2/core/core.hpp>
-// #include <opencv2/highgui/highgui.hpp>
-#include <System.h>
-#include <vector>
 
 
 using namespace ILLIXR;
 using namespace ILLIXR::data_format;
 
 orb_slam3::orb_slam3(const std::string& name_, phonebook* pb_)
-    : plugin{name_, pb_}
-    , switchboard_{phonebook_->lookup_impl<switchboard>()}
-    , pose_{switchboard_->get_writer<pose_type>("slow_pose")}
-    , imu_integrator_input_{switchboard_->get_writer<imu_integrator_input>("imu_integrator_input")}
-    , cam_reader_{switchboard_->get_buffered_reader<binocular_cam_type>("cam")}
-    , cam_buffer_{nullptr} {
+        : plugin{name_, pb_}
+        , switchboard_{phonebook_->lookup_impl<switchboard>()}
+        , pose_{switchboard_->get_writer<pose_type>("slow_pose")}
+        , imu_integrator_input_{switchboard_->get_writer<imu_integrator_input>("imu_integrator_input")}
+        , cam_reader_{switchboard_->get_buffered_reader<binocular_cam_type>("cam")}
+        , cam_buffer_{nullptr} {
     assert(getenv("ILLIXR_BINARY_PATH"));
     root_path_  = boost::filesystem::path(getenv("ILLIXR_BINARY_PATH"));
-    vocab_path_ = root_path_ / ".." / "share" / "ORB_SLAM3" / "Vocabulary" / "ORBvoc.txt";
+    root_path_ = root_path_  / ".." / "share" / "ORB_SLAM3";
+    vocab_path_ = root_path_ / "Vocabulary" / "ORBvoc.txt";
     use_zed_    = ILLIXR::str_to_bool(ILLIXR::getenv_or("USE_ZED", "False"));
     // set initial slow pose
     pose_.put(pose_.allocate(time_point{}, Eigen::Vector3f{0, 0, 0}, Eigen::Quaternionf{1, 0, 0, 0}));
@@ -65,7 +47,7 @@ orb_slam3::orb_slam3(const std::string& name_, phonebook* pb_)
 void orb_slam3::start() {
     plugin::start();
 
-    switchboard_->schedule<imu_type>(id_, "imu", [&](switchboard::ptr<const imu_type> datum, std::size_t iteration_no) {
+    switchboard_->schedule<imu_type>(id_, "imu", [this](const switchboard::ptr<const imu_type>& datum, std::size_t iteration_no) {
         this->feed_imu_cam(datum, iteration_no);
     });
     /*
@@ -76,16 +58,16 @@ void orb_slam3::start() {
     */
 }
 
-void orb_slam3::feed_imu_cam(switchboard::ptr<const imu_type> datum, std::size_t iteration_no) {
+void orb_slam3::feed_imu_cam(const switchboard::ptr<const imu_type>& datum, std::size_t iteration_no) {
     (void) iteration_no;
     // Ensures that slam doesnt start before valid IMU readings come in
-    if (datum == NULL) {
+    if (datum == nullptr) {
         return;
     }
 
     // Get current IMU data
-    cv::Point3f           acc(datum->linear_a.x(), datum->linear_a.y(), datum->linear_a.z());
-    cv::Point3f           gyro(datum->angular_v.x(), datum->angular_v.y(), datum->angular_v.z());
+    cv::Point3f           acc(static_cast<float>(datum->linear_a.x()), static_cast<float>(datum->linear_a.y()), static_cast<float>(datum->linear_a.z()));
+    cv::Point3f           gyro(static_cast<float>(datum->angular_v.x()), static_cast<float>(datum->angular_v.y()), static_cast<float>(datum->angular_v.z()));
     ORB_SLAM3::IMU::Point input_imu(acc.x, acc.y, acc.z, gyro.x, gyro.y, gyro.z,
                                     duration_to_double(datum->time.time_since_epoch()));
     current_input_.push_back(input_imu);
@@ -112,8 +94,7 @@ void orb_slam3::feed_imu_cam(switchboard::ptr<const imu_type> datum, std::size_t
     // If there is cam data, load IMU data from the last cam data up until now
     prev_input_.clear();
     if (!is_first_cam_) {
-        for (int i = 0; i < current_input_.size(); i++) {
-            ORB_SLAM3::IMU::Point imu_point = current_input_[i];
+        for (const auto& imu_point : current_input_) {
             prev_input_.push_back(imu_point);
         }
     } else {
@@ -180,15 +161,15 @@ void orb_slam3::feed_imu_cam(switchboard::ptr<const imu_type> datum, std::size_t
     pose_.put(pose_.allocate(cam_->time, trans, quat));
 
     imu_integrator_input_.put(
-        imu_integrator_input_.allocate(cam_->time, ILLIXR::duration{0L},
-                                       imu_params{.gyro_noise            = SLAM_->settings_->noiseGyro(),
-                                                  .acc_noise             = SLAM_->settings_->noiseAcc(),
-                                                  .gyro_walk             = SLAM_->settings_->gyroWalk(),
-                                                  .acc_walk              = SLAM_->settings_->accWalk(),
-                                                  .n_gravity             = Eigen::Matrix<double, 3, 1>(0.0, 0.0, -9.81),
-                                                  .imu_integration_sigma = 1.0,
-                                                  .nominal_rate          = SLAM_->settings_->imuFrequency()},
-                                       acc_bias, gyro_bias, posd, vel, rotd));
+            imu_integrator_input_.allocate(cam_->time, ILLIXR::duration{0L},
+                                           imu_params{.gyro_noise            = SLAM_->settings_->noiseGyro(),
+                                                   .acc_noise             = SLAM_->settings_->noiseAcc(),
+                                                   .gyro_walk             = SLAM_->settings_->gyroWalk(),
+                                                   .acc_walk              = SLAM_->settings_->accWalk(),
+                                                   .n_gravity             = Eigen::Matrix<double, 3, 1>(0.0, 0.0, -9.81),
+                                                   .imu_integration_sigma = 1.0,
+                                                   .nominal_rate          = SLAM_->settings_->imuFrequency()},
+                                           acc_bias, gyro_bias, posd, vel, rotd));
 
     // clear imu vector if there are images
     prev_input_.clear();
@@ -262,4 +243,4 @@ duration, min_runtime_, max_runtime_, total_runtime_ / num_runtime_); #endif
 }
 #endif
 */
-PLUGIN_MAIN(orb_slam3);
+PLUGIN_MAIN(orb_slam3)

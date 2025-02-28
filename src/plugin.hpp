@@ -35,7 +35,6 @@ public:
 private:
     const std::shared_ptr<switchboard>                            switchboard_;
     switchboard::writer<data_format::pose_type>                   pose_;
-    std::shared_ptr<relative_clock>                               _m_rtc;
     switchboard::buffered_reader<data_format::binocular_cam_type> cam_reader_;
     switchboard::ptr<const data_format::binocular_cam_type>       cam_;
     switchboard::ptr<const data_format::binocular_cam_type>       cam_buffer_;

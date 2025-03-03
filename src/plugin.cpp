@@ -17,7 +17,7 @@ orb_slam3::orb_slam3(const std::string& name_, phonebook* pb_)
         , cam_buffer_{nullptr} {
     assert(switchboard_->get_env_char("ILLIXR_BINARY_PATH"));
     root_path_  = boost::filesystem::path(switchboard_->get_env("ILLIXR_BINARY_PATH"));
-    root_path_ = root_path_  / ".." / "share" / "ORB_SLAM3";
+    root_path_ = root_path_  / "share" / "ORB_SLAM3";
     vocab_path_ = root_path_ / "Vocabulary" / "ORBvoc.txt";
     use_zed_    = switchboard_->get_env_bool("USE_ZED", "False");
     // set initial slow pose

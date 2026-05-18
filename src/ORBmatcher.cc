@@ -23,9 +23,9 @@
 
 #include<opencv2/core/core.hpp>
 
-#include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
+#include "DBoW2_OS3/FeatureVector.h"
 
-#include<stdint-gcc.h>
+#include<stdint.h>
 
 using namespace std;
 

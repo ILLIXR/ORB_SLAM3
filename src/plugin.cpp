@@ -11,7 +11,7 @@ using namespace ILLIXR::data_format;
 orb_slam3::orb_slam3(const std::string& name_, phonebook* pb_)
         : plugin{name_, pb_}
         , switchboard_{phonebook_->lookup_impl<switchboard>()}
-        , pose_{switchboard_->get_writer<pose_type>("slow_pose")}
+        , pose_{switchboard_->get_writer<pose::head_pose_type>("slow_pose")}
         , imu_integrator_input_{switchboard_->get_writer<imu_integrator_input>("imu_integrator_input")}
         , cam_reader_{switchboard_->get_buffered_reader<binocular_cam_type>("cam")}
         , cam_buffer_{nullptr} {

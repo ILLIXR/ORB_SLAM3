@@ -4,7 +4,7 @@
 
 #include "illixr/data_format/imu.hpp"
 #include "illixr/data_format/opencv_data_types.hpp"
-#include "illixr/data_format/pose.hpp"
+#include "illixr/data_format/poses/head_pose.hpp"
 #include "illixr/phonebook.hpp"
 #include "illixr/plugin.hpp"
 #include "illixr/relative_clock.hpp"
@@ -34,7 +34,7 @@ public:
 
 private:
     const std::shared_ptr<switchboard>                            switchboard_;
-    switchboard::writer<data_format::pose_type>                   pose_;
+    switchboard::writer<data_format::pose::head_pose_type>        pose_;
     switchboard::buffered_reader<data_format::binocular_cam_type> cam_reader_;
     switchboard::ptr<const data_format::binocular_cam_type>       cam_;
     switchboard::ptr<const data_format::binocular_cam_type>       cam_buffer_;

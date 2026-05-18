@@ -130,15 +130,16 @@ add_library(${PROJECT_NAME} SHARED
 
 
 target_link_libraries(${PROJECT_NAME}
-        ${OpenCV_LIBS}
-        ${EIGEN3_LIBS}
-        ${DBoW2_OS3_LIBRARIES}
-        g2o::core
-        g2o::types_sba
-        g2o::solver_eigen
-        boost_filesystem
-        boost_serialization
-        )
+                      ${OpenCV_LIBS}
+                      ${EIGEN3_LIBS}
+                      ${DBoW2_OS3_LIBRARIES}
+                      g2o::core
+                      g2o::types_sba
+                      g2o::solver_eigen
+                      Sophus::Sophus
+                      boost_filesystem
+                      boost_serialization
+)
 
 # If RealSense SDK is found the library is added and its examples compiled
 if(realsense2_FOUND)
